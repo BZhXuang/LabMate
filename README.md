@@ -10,10 +10,10 @@ LabMate 是面向高校共享仪器场景的 **Agentic RAG 应用**：它先识�
 
 普通 FAQ 只能回答规则，无法可靠衔接到业务动作。LabMate 将知识问答和受控的业务流程放进同一条状态化工作流中：
 
-1. **识别与路由：**分类器识别问候、制度、安全、设备、预约、报修及范围外请求；复杂度路由器选择 DIRECT、SINGLE、MULTI、AGENT 或 REFUSE。
-2. **检索与回答：**对 Markdown 知识做清洗、切块和元数据标注；BM25 负责词法召回，本地 BGE-small 可提供稠密向量召回，RRF 合并排名，Cross-Encoder 可对候选重排。回答附带资料引用，并经过证据支持性检查。
-3. **工具与确认：**只注册 LabMate 领域的设备查询、可预约时段检查、预约申请、故障工单和知识搜索等工具。写入动作会经过字段校验、权限检查、待确认状态持久化和显式确认。
-4. **跨轮与恢复：**会话消息、摘要、待确认动作和业务记录写入数据库；服务重建后可以恢复会话与未完成提案。幂等记录用于避免顺序重试重复写入。
+1. **识别与路由：** 分类器识别问候、制度、安全、设备、预约、报修及范围外请求；复杂度路由器选择 DIRECT、SINGLE、MULTI、AGENT 或 REFUSE。
+2. **检索与回答：** 对 Markdown 知识做清洗、切块和元数据标注；BM25 负责词法召回，本地 BGE-small 可提供稠密向量召回，RRF 合并排名，Cross-Encoder 可对候选重排。回答附带资料引用，并经过证据支持性检查。
+3. **工具与确认：** 只注册 LabMate 领域的设备查询、可预约时段检查、预约申请、故障工单和知识搜索等工具。写入动作会经过字段校验、权限检查、待确认状态持久化和显式确认。
+4. **跨轮与恢复：** 会话消息、摘要、待确认动作和业务记录写入数据库；服务重建后可以恢复会话与未完成提案。幂等记录用于避免顺序重试重复写入。
 
 ```mermaid
 flowchart LR
@@ -50,12 +50,12 @@ flowchart LR
 
 ## 技术栈
 
-- **后端：**Python 3.11+、FastAPI、Pydantic、SQLAlchemy、SQLite（默认）/PostgreSQL、pytest
-- **工作流：**LangGraph，一个 Agent 状态图，含意图分类、路由、检索、工具规划、确认执行、回答与记忆节点
-- **RAG：**BM25、Sentence-Transformers `BAAI/bge-small-zh-v1.5`、RRF、Cross-Encoder `BAAI/bge-reranker-base`
-- **模型：**DeepSeek Chat（可选，需用户自己的 API Key）；本地向量与重排模型（可选）
-- **前端：**React、TypeScript、Vite，使用 SSE 接收流式回答
-- **可选组件：**Redis 缓存、Qdrant 向量存储；默认本地配置可以使用进程内缓存和向量存储
+- **后端：** Python 3.11+、FastAPI、Pydantic、SQLAlchemy、SQLite（默认）/PostgreSQL、pytest
+- **工作流：** LangGraph，一个 Agent 状态图，含意图分类、路由、检索、工具规划、确认执行、回答与记忆节点
+- **RAG：** BM25、Sentence-Transformers `BAAI/bge-small-zh-v1.5`、RRF、Cross-Encoder `BAAI/bge-reranker-base`
+- **模型：** DeepSeek Chat（可选，需用户自己的 API Key）；本地向量与重排模型（可选）
+- **前端：** React、TypeScript、Vite，使用 SSE 接收流式回答
+- **可选组件：** Redis 缓存、Qdrant 向量存储；默认本地配置可以使用进程内缓存和向量存储
 
 ## 本地运行
 
@@ -173,15 +173,6 @@ docs/                    架构、语料来源、评测与面试说明
 scripts/                 模型准备、知识导入、评测和报告生成
 ```
 
-## 面试准备与项目资料
-
-- [从零理解 LabMate](docs/从零理解LabMate.md)：概念与代码链路入门
-- [项目深度说明](docs/project-deep-dive.md)：实现结构、取舍和限制
-- [完整评测报告](docs/14-evaluation-report.md)：意图 120 题 / 9 类、检索 75 题、32 个 E2E 场景及逐题证据
-- [面试问题库](docs/interview/labmate-question-bank.md)：围绕实现细节和评测边界的追问
-- [闭环、记忆与恢复](docs/21-workflow-memory-and-recovery.md)：确认写入、跨轮上下文与恢复验证
-- [实现限制](docs/12-limitations.md)：当前未实现与后续验证计划
-- [代码来源与许可](docs/attribution.md)：第三方代码和许可证记录
 
 ## 许可与来源
 
