@@ -176,4 +176,4 @@ scripts/                 模型准备、知识导入、评测和报告生成
 
 ## 许可与来源
 
-本仓库保留 MIT License 和原版权声明。项目最初使用的通用工程结构和部分通用实现参考了 [JEen-wang/Adaptive-rag](https://github.com/JEen-wang/Adaptive-rag)；该来源及处理方式见[归属说明](docs/attribution.md)。LabMate 场景语料、业务流程和发布说明应按本仓库明确披露的来源与模拟边界理解。
+本仓库保留 MIT License 和原版权声明。
