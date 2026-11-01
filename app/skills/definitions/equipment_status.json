@@ -1,0 +1,7 @@
+{
+  "name": "equipment_status",
+  "description": "查询演示共享仪器台账和位置",
+  "triggers": ["设备状态", "仪器状态", "设备在哪", "设备台账", "有哪些仪器"],
+  "steps": ["识别设备编号或名称", "查询演示台账", "说明数据不代表真实校园实时状态"],
+  "tools": ["search_lab_equipment", "get_lab_equipment_status"]
+}

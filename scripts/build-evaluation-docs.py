@@ -1,0 +1,987 @@
+"""Build interview-readable Markdown from the frozen LabMate evaluation.
+
+Only reads saved JSON/JSONL and writes documentation. No providers, model
+weights, application settings, network calls, or API keys are loaded.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from collections import Counter
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+REPORT = ROOT / "eval/reports/all_20261031T140024Z.json"
+DOC = ROOT / "docs/14-evaluation-report.md"
+DETAIL = ROOT / "docs/evaluation-casebook.md"
+DATA = ROOT / "eval/dataset/labmate"
+LABELS = {
+    "greeting": "问候",
+    "chitchat": "闲聊",
+    "faq_policy": "一般制度、助手能力与对话背景",
+    "human_handoff": "联系人工",
+    "lab_equipment": "设备台账、状态和位置",
+    "lab_booking": "预约规则、时段和申请",
+    "lab_maintenance": "故障上报、维修和工单",
+    "lab_safety": "安全规范、操作边界与风险",
+    "out_of_scope": "越界、注入或不支持的请求",
+}
+
+
+def load_rows(name: str) -> list[dict]:
+    return [
+        json.loads(s)
+        for s in (DATA / f"{name}.jsonl").read_text(encoding="utf-8").splitlines()
+        if s.strip()
+    ]
+
+
+def cell(value: object) -> str:
+    return str(value).replace("|", "&#124;").replace("\r", "").replace("\n", "<br>")
+
+
+def table(headers: list[str], rows: list[list[object]]) -> str:
+    return "\n".join(
+        ["| " + " | ".join(headers) + " |", "|" + "---|" * len(headers)]
+        + ["| " + " | ".join(cell(v) for v in row) + " |" for row in rows]
+    )
+
+
+def pct(value: float) -> str:
+    return f"{value * 100:.2f}%"
+
+
+def write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text.strip() + "\n", encoding="utf-8", newline="\n")
+
+
+def check_evidence(report: dict, intent: list[dict], rag: list[dict], e2e: list[dict]) -> dict:
+    """Cross-check persisted evidence before deriving any documentation tables."""
+    for rel, digest in report["environment"]["input_sha256"].items():
+        assert (
+            hashlib.sha256((ROOT / rel).read_bytes()).hexdigest() == digest
+        ), f"Changed evaluation input: {rel}"
+    for source in report["source_reports"]:
+        assert (
+            hashlib.sha256((ROOT / source["path"]).read_bytes()).hexdigest() == source["sha256"]
+        ), source["path"]
+    assert len(intent) == 120 and set(x["intent"] for x in intent) == set(LABELS)
+    assert len(rag) == 75 and len(e2e) == 32
+    for rows in (intent, rag, e2e):
+        assert len({x["id"] for x in rows}) == len(rows)
+    counts = Counter(x["intent"] for x in intent)
+    for name in ("intent_rules", "intent_v3_no_overlay", "intent_v3"):
+        item = report[name]
+        correct = sum(round(counts[label] * score) for label, score in item["per_label"].items())
+        assert abs(correct / len(intent) - item["accuracy"]) <= 0.000051
+    golds = {row["id"]: set(row["relevant_doc_ids"]) for row in rag}
+    for system in report["retrieval"]["systems"]:
+        assert {x["id"] for x in system["cases"]} == set(golds)
+        totals = Counter()
+        for item in system["cases"]:
+            relevant, ranked = golds[item["id"]], item["retrieved"]
+            assert set(item["relevant"]) == relevant
+            assert len(ranked) == len(set(ranked))
+            totals["precision_at_1"] += float(bool(ranked) and ranked[0] in relevant)
+            totals["hit_at_1"] += float(bool(ranked) and ranked[0] in relevant)
+            totals["recall_at_3"] += len(relevant.intersection(ranked[:3])) / len(relevant)
+            totals["hit_at_3"] += float(bool(relevant.intersection(ranked[:3])))
+            totals["mrr"] += next(
+                (1 / index for index, doc in enumerate(ranked, 1) if doc in relevant), 0
+            )
+        for metric, total in totals.items():
+            assert abs(total / len(rag) - system[metric]["mean"]) <= 0.000051, (
+                system["backend"],
+                metric,
+            )
+    generation = report["generation"]
+    gold_rows = {row["id"]: row for row in rag}
+    assert len(generation["cases"]) == generation["completed"] == 75
+    for item in generation["cases"]:
+        keywords = gold_rows[item["id"]]["gold_answer_contains"]
+        for prefix in ("rag", "checked"):
+            assert item[prefix + "_keyword_hit"] == all(
+                word in item[prefix + "_answer"] for word in keywords
+            )
+    for prefix, metric_name in (("rag", "rag"), ("checked", "rag_plus_self_check")):
+        for flag, metric in (("supported", "faithfulness"), ("keyword_hit", "keyword_hit")):
+            value = (
+                sum(x[prefix + "_" + flag] for x in generation["cases"]) / generation["completed"]
+            )
+            assert abs(value - generation[metric_name][metric]) <= 0.000051
+    turns = [t for scenario in report["e2e"]["cases"] for t in scenario["turns"]]
+    assert len(turns) == sum(len(row.get("steps", [row])) for row in e2e) == 51
+    assert sum(x["passed"] for x in report["e2e"]["cases"]) == report["e2e"]["scenario_passed"]
+    for key, ratio in report["e2e"]["checks"].items():
+        outcomes = [t["checks"][key] for t in turns if key in t["checks"]]
+        assert len(outcomes) == ratio["n"] and sum(outcomes) == ratio["passed"], key
+    return {
+        "input_hashes": len(report["environment"]["input_sha256"]),
+        "source_hashes": len(report["source_reports"]),
+        "intent_cases": len(intent),
+        "intent_labels": len(counts),
+        "retrieval_cases": len(rag),
+        "retrieval_systems": len(report["retrieval"]["systems"]),
+        "generation_cases": len(generation["cases"]),
+        "e2e_scenarios": len(e2e),
+        "e2e_turns": len(turns),
+    }
+
+
+def build_report(r: dict, intents: list[dict], rag: list[dict], e2e: list[dict]) -> str:
+    counts = Counter(x["intent"] for x in intents)
+    label_rows, class_rows = [], []
+    for label, meaning in LABELS.items():
+        example = next(row for row in intents if row["intent"] == label)
+        label_rows.append(
+            [
+                f"`{label}`",
+                meaning,
+                counts[label],
+                pct(counts[label] / len(intents)),
+                f"[{example['id']}](../eval/dataset/labmate/intent.jsonl)：{example['query']}",
+            ]
+        )
+        results = []
+        for key in ("intent_rules", "intent_v3_no_overlay", "intent_v3"):
+            rate = r[key]["per_label"][label]
+            results.append(f"{round(rate * counts[label])}/{counts[label]}（{pct(rate)}）")
+        class_rows.append([f"`{label}`", *results])
+    systems = r["retrieval"]["systems"]
+    retrieval_rows = [
+        [
+            s["backend"],
+            *[pct(s[k]["mean"]) for k in ("precision_at_1", "recall_at_3", "hit_at_1", "hit_at_3")],
+            f"{s['mrr']['mean']:.4f}",
+        ]
+        for s in systems
+    ]
+    gen_rows = [
+        [
+            name,
+            pct(r["generation"][key]["faithfulness"]),
+            pct(r["generation"][key]["hallucination_rate"]),
+            pct(r["generation"][key]["keyword_hit"]),
+        ]
+        for name, key in (
+            ("无检索", "naive_no_context"),
+            ("单次混合检索 RAG", "rag"),
+            ("RAG + 生成后自检", "rag_plus_self_check"),
+        )
+    ]
+    misses = []
+    rg = {x["id"]: x for x in rag}
+    explanations = {
+        "lr14": "答案有“可观察到的现象”，没有金标的“故障”；主要是词面差异。",
+        "lr16": "答案写“不能提供”，金标要求“不提供”；需要人工判断语义，而非自动判错。",
+        "lr17": "答案写“不能”“请勿”，没有“不得”；同义拒答未匹配。",
+        "lr21": "实际拒绝给出台账值，属于证据不足/检索内容未覆盖目标字段。",
+        "lr36": "“不视为时间重叠”没有连续出现“不视为重叠”；严格子串检查失配。",
+        "lr43": "用了“记录已写入”，没有“登记”；并未因此证明业务结论错误。",
+        "lr57": "“设备名称或编号”没有连续出现“设备编号”；另有费用异议提交能力的越界表述，需要人工复核。",
+        "lr62": "缺“维护”“预约”“责任人”等目标方面，不能仅归因于同义词。",
+        "lr70": "解释了个人信息限制，但未出现“隐私”；词面遗漏。",
+    }
+    for item in r["generation"]["cases"]:
+        if not item["rag_keyword_hit"]:
+            missing = [
+                w for w in rg[item["id"]]["gold_answer_contains"] if w not in item["rag_answer"]
+            ]
+            misses.append(
+                [
+                    item["id"],
+                    item["query"],
+                    "、".join(missing),
+                    explanations.get(item["id"], "需要人工复核"),
+                ]
+            )
+    first_cases = []
+    for scenario in r["e2e"]["cases"][:24]:
+        t = scenario["turns"][0]
+        first_cases.append(
+            [
+                scenario["id"],
+                t["query"],
+                t["intent"] or "—",
+                t["strategy"] or "—",
+                t["retrieval_rounds"],
+                f"{t['latency_ms']:.1f}",
+                "通过" if t["passed"] else "失败",
+            ]
+        )
+    workflow_rows = []
+    for scenario in r["e2e"]["cases"][24:]:
+        workflow_rows.append(
+            [
+                scenario["id"],
+                scenario["name"],
+                len(scenario["turns"]),
+                " → ".join(t["strategy"] or "—" for t in scenario["turns"]),
+                "通过" if scenario["passed"] else "失败",
+            ]
+        )
+    check_explanations = {
+        "completed": "请求返回，未抛出被评测器捕获的异常；不代表回答语义全部正确。",
+        "strategy": "仅对填写 expect_strategy 的请求判断策略。",
+        "intent": "仅对填写 expect_intent 的请求判断标签。",
+        "keyword": "仅对设置关键词的请求做全部子串匹配。",
+        "pending_tool": "待确认提案的工具名匹配期望，不等于已经执行。",
+        "refuse": "三个固定越界样本的 refused 标志。",
+        "no_write": "核对工单和预约数量不应变化。",
+        "multi_executed": "确实进入 MULTI 并记录大于零的检索轮数。",
+        "ticket_delta": "核对工单数量增量，包括预期增量为零的步骤。",
+        "reservation_delta": "核对预约数量增量，包括重复和冲突不新增的步骤。",
+        "readback": "写入后再查询预约记录。",
+        "summary_restored": "核对摘要已保存，并在恢复后回答样品代号。",
+    }
+    checks = [
+        [key, f"{value['passed']}/{value['n']}", check_explanations[key]]
+        for key, value in r["e2e"]["checks"].items()
+    ]
+    sources = [
+        [f"[{Path(x['path']).name}](../{x['path']})", f"`{x['sha256']}`"]
+        for x in r["source_reports"]
+    ]
+    sample = rag[26]
+    retrieval_failures = []
+    by_case = [{x["id"]: x for x in system["cases"]} for system in systems]
+    for row in rag:
+        ranked = by_case[-1][row["id"]]["retrieved"]
+        if ranked and ranked[0] not in row["relevant_doc_ids"]:
+            retrieval_failures.append(
+                [
+                    row["id"],
+                    row["query"],
+                    "、".join(row["relevant_doc_ids"]),
+                    ranked[0],
+                    next(
+                        (i for i, x in enumerate(ranked, 1) if x in row["relevant_doc_ids"]),
+                        "未命中",
+                    ),
+                ]
+            )
+    text = r"""# 14 · LabMate 完整评测报告与面试证据
+
+文档整理：2026-11-01。**实验测量：2026-10-31**。本次是对已有真实模型结果的整理，没有重新调用付费 API，也没有更改题目、金标或成绩。公开发布副本后来裁剪了无关代码，未在当前源码树重新运行同一套真实模型任务；当前发布版的运行与工程验证状态以仓库 README 为准。
+
+本报告围绕高校共享仪器运维助手，说明数据在哪里、如何评测、结果是什么、能支持哪些简历表述。项目使用演示知识规则和本地模拟设备/业务数据；当前结果属于开发回归，不是生产校园系统验收。
+
+## 阅读导航
+
+- [1. 先找到意图识别的题目、代码和结果](#1-先找到意图识别的题目代码和结果)
+- [2. 结论摘要](#2-结论摘要)
+- [3. 评测目标与范围](#3-评测目标与范围)
+- [4. 环境、真实模型与复现](#4-环境真实模型与复现)
+- [5. 数据集与样例](#5-数据集与样例)
+- [6. 指标定义与手算例子](#6-指标定义与手算例子)
+- [7. 意图识别：分布、对照、逐类结果与失败](#7-意图识别分布对照逐类结果与失败)
+- [8. 检索：四路对照与逐题失败](#8-检索四路对照与逐题失败)
+- [9. 生成：忠实度、自检与关键词](#9-生成忠实度自检与关键词)
+- [10. 端到端：32 场景与数据库闭环](#10-端到端32-场景与数据库闭环)
+- [11. 自动化测试与功能证据](#11-自动化测试与功能证据)
+- [12. 失败修复与完整复测](#12-失败修复与完整复测)
+- [13. 简历可用表述与边界](#13-简历可用表述与边界)
+- [14. 面试追问与回答](#14-面试追问与回答)
+- [15. 未测项与后续实验](#15-未测项与后续实验)
+- [16. 原始证据与维护方式](#16-原始证据与维护方式)
+
+## 1. 先找到意图识别的题目、代码和结果
+
+“120 题、9 类”来自当前真实题集，不是文档中另起的一套数字。按下面顺序打开即可核对：
+
+| 想看什么 | 文件或函数 | 如何核对 |
+|---|---|---|
+| 120 道原题 | [intent.jsonl](../eval/dataset/labmate/intent.jsonl) | 每个非空行是一题，字段为 id、query、intent；共 120 个唯一 ID |
+| 9 类分布、每题中文内容 | [题集说明](../eval/dataset/labmate/README.md)、[逐题明细](evaluation-casebook.md#intent-cases) | 可直接阅读表格，不必手动数 JSONL |
+| 分类模型和规则 | [intent.py](../app/agents/nodes/intent.py) 的 IntentClassifier / rule_based_intent | 识别用户想做什么，不负责授予写入权限 |
+| 规则覆盖层 | [intent_overlay.py](../app/agents/nodes/intent_overlay.py) | high_precision_intent / apply_intent_overlay |
+| 模型提示词 | [intent.py](../app/prompts/intent.py) 的 INTENT_SYSTEM | 当前意图提示版本为 intent_v3 |
+| 四组实验的入口 | [runner.py](../eval/runner.py) | eval_intent_rules、eval_intent_overlay、eval_intent_llm |
+| 已完成的真实调用结果 | [意图原始报告](../eval/reports/intent_20261031T135559Z.json) | 找 intent_rules、intent_overlay、intent_v3_no_overlay、intent_v3 四个字段 |
+| 汇总中的位置 | [完整汇总 JSON](../eval/reports/all_20261031T140024Z.json) | 同样保留四个字段、per_label 和 mismatches |
+| 白话机制解释 | [零基础项目说明](从零理解LabMate.md) | 模型分类、规则兜底、覆盖层与五策略的区别 |
+
+JSONL 的 `intent` 是人工指定、AI 辅助整理后的目标标签，称为“金标”；它不是模型预测。JSON 报告的 `accuracy` 是本次实际预测与金标比较的结果。
+
+代码枚举和兼容提示中仍保留更多历史标签；**9 类说的是当前 120 题实际覆盖的标签数，不是宣称整个枚举只有 9 个值。**
+
+## 2. 结论摘要
+
+| 环节 | 规模 | 本轮结果 | 应当如何解释 |
+|---|---|---|---|
+| 意图识别 | 120 题、9 类 | 规则 100/120；DeepSeek 开/关覆盖层均 119/120（99.17%） | 测试了覆盖层开关，但本轮没有额外收益 |
+| 检索 | 75 题、30 篇活动资料 | BM25 / BGE / RRF / CE 管线 P@1 为 68.00% / 69.33% / 73.33% / 78.67% | CE 管线候选范围不同，不能完全归因于排序器 |
+| 生成 | 75/75 完成 | RAG 和自检忠实度均 100%，关键词均 88.00%（66/75） | 未触发纠错；同模型裁判不等于人工正确率 |
+| E2E | 32 场景、51 次请求 | 场景 32/32，完成 51/51 | 每项断言分母不同，并非 51 条回答均经全面人工核查 |
+| 业务闭环 | 确认、重复、冲突与恢复 | 检查提案、数据库增量、时段回读和摘要恢复 | 本地模拟数据库，不代表真实审批或维修完成 |
+| 历史工程验证 | 测量时版本的后端、前端及静态检查 | 后端 185 项、前端 3 项通过，构建、pip check、Ruff 通过 | 这是 2026-10-31 测量版本的保存记录；当前发布副本验证见仓库 README |
+| E2E 耗时 | 51 次请求 | P50 3.86 秒，P95 14.03 秒 | 含 CPU 和远程 API；小样本非生产 SLA |
+
+## 3. 评测目标与范围
+
+系统是单 Agent、多节点 LangGraph 工作流，包含五种策略：DIRECT、SINGLE、MULTI、AGENT、REFUSE。意图分类识别业务主题，路由决定处理策略，工具层和确认机制控制写操作；三者不能用一个准确率代替。
+
+| 任务 | 实际检查什么 | 没有证明什么 |
+|---|---|---|
+| intent | 规则、覆盖层、2026-10-31 测量版本的 DeepSeek 提示表现 | 全部真实用户的泛化、所有策略都最优 |
+| retrieval | 目标文档在检索排名中的位置 | 回答是否完整、资料本身是否权威 |
+| generation | 无上下文/RAG/自检的支持性与严格关键词 | 人工偏好、所有功能边界、完整 MULTI 收益 |
+| e2e | 当前整图路径、特定回答条件、真实本地库写入与恢复 | 真实校园平台接入、并发安全、主机掉电恢复 |
+| pytest / 前端测试 | 逻辑、权限、异常和状态持久化的回归 | 真实模型效果、线上容量和 SLA |
+
+## 4. 环境、真实模型与复现
+
+### 4.1 本轮环境
+
+| 项目 | 本轮条件 |
+|---|---|
+| 历史测量平台 | Windows 11，Python 3.12.14 |
+| 生成/意图/判断模型 | DeepSeek API，deepseek-chat；生成与裁判同模型 |
+| Embedding | BAAI/bge-small-zh-v1.5，512 维，CPU 实际推理 |
+| Cross-Encoder | BAAI/bge-reranker-base，CPU 实际推理 |
+| Python 模型包 | torch 2.15.0、sentence-transformers 3.4.1、transformers 4.57.6 |
+| 本地模型加载 | 固定权重版本、本地路径、离线读取；CPU 线程数 4 |
+| 知识库 | knowledge/labops，30 篇 Markdown、108 个去重片段 |
+| E2E 数据库 | 每轮评测使用隔离的文件 SQLite，不修改开发数据库 |
+| 汇总方式 | 四个完整任务报告合并，记录输入/源码/环境一致性和来源 SHA256 |
+
+`model_verification` 在 2026-10-31 的原始报告中记录 dense_backend=bge-small-zh-v1.5、embedding_dim=512、reranker_backend=cross-encoder、inference_passed=true。因此这些历史成绩不是哈希向量或词面重排的占位成绩；公开发布副本当前默认使用离线 provider、哈希向量和词面回退重排，尚未在该副本重新运行这些真实模型任务。类名中出现 M3 不表示当时加载了 bge-m3，模型以原始报告记录为准。
+
+### 4.2 复现命令
+
+在包含 `pyproject.toml` 的项目根目录执行。安装和模型下载见[模型运行文档](20-model-runtime-and-eval.md)。
+
+```powershell
+# 只复测意图：含规则、覆盖层和 DeepSeek 开/关覆盖层
+.\scripts\evaluate-real.ps1 -Task intent -WithLLM
+
+# 只复测检索：本地真实模型，不调用付费生成 API
+.\scripts\evaluate-real.ps1 -Task retrieval
+
+# 生成 / 完整业务工作流
+.\scripts\evaluate-real.ps1 -Task generation -WithLLM
+.\scripts\evaluate-real.ps1 -Task e2e -WithLLM
+
+# 全部任务
+.\scripts\evaluate-real.ps1 -WithLLM
+```
+
+`-WithLLM` 会产生模型调用费用。脚本先实际运行 embedding 和 reranker；如果回退就停止，不把“开启配置”当成加载成功。意图任务不加 `-WithLLM` 时只有规则和覆盖层，**不会得到真实 DeepSeek 分类准确率**。
+
+底层完整入口为 `python -m eval.runner --task all --llm --require-real-models`。不用脚本时，应自行保证模型路径、开关和线程等条件一致。
+
+### 4.3 阅读已有证据不需要重跑
+
+本报告和[逐题明细](evaluation-casebook.md)可从冻结 JSON 离线生成：
+
+```powershell
+.\.venv\Scripts\python.exe -X utf8 scripts/build-evaluation-docs.py
+```
+
+此命令只读已有文件、核对输入和报告哈希、重新计算表格并写文档，不加载模型或读取 API 密钥。实验日期保持 2026-10-31，不因生成文档而变成新实验。
+
+## 5. 数据集与样例
+
+### 5.1 三份活动题集
+
+| 题集 | 规模 | 关键字段 | 用途 |
+|---|---|---|---|
+| [intent.jsonl](../eval/dataset/labmate/intent.jsonl) | 120 题、9 类 | id、query、intent | 规则/模型/覆盖层对照 |
+| [rag.jsonl](../eval/dataset/labmate/rag.jsonl) | 75 题 | relevant_doc_ids、gold_answer_contains | 文档检索和生成 |
+| [e2e.jsonl](../eval/dataset/labmate/e2e.jsonl) | 24 单轮 + 8 多轮场景，共 51 次请求 | expect_*、steps、confirm_previous、restart_before | 整图与数据库闭环 |
+
+当前题集保留初版 24 条意图和 8 条 E2E，再扩至 120/32；检索保留初版 27 题，并为新增 24 篇资料各配两题，形成 75 题。知识库 30 篇中 24 篇为 AI 辅助自拟演示规则。资料与题目并非完全独立来源。
+
+### 5.2 意图的 9 类分布
+
+{{LABEL_TABLE}}
+
+### 5.3 真实样例：金标是什么
+
+```json
+{"id":"li08","query":"预约大型共享仪器前需要哪些培训","intent":"lab_booking"}
+```
+
+`lab_booking` 表示“预约主题”，不表示马上写预约记录。后续路由还要区分“问制度”和“申请预约”；没有明确确认，不允许实际写入。
+
+检索/生成题样例：
+
+```json
+{{RAG_SAMPLE}}
+```
+
+检索金标是 Markdown 文件名 stem，而非片段 ID。75 题覆盖全部 30 个目标文档：62 题标一篇、8 题标两篇、4 题标三篇、1 题标四篇。多目标文档问题共 13 题；这些目标文档不是穷尽式相关性标注。
+
+### 5.4 固定题集不等于独立测试集
+
+题目在本轮运行前固定并保存 SHA256，失败样本没有删除；但开发者根据失败修改了提示和逻辑，再对同一题集复测。因此本报告是开发回归结果。固定哈希有利于追溯输入是否变化，不能消除针对题集调试带来的偏差。
+
+## 6. 指标定义与手算例子
+
+实现见 [metrics.py](../eval/metrics.py)。每题先计算，再对题目取平均；除非另有说明，不把不同题的分母全部混到一起。
+
+| 指标 | 本项目实际计算方式 | 白话解释 |
+|---|---|---|
+| Accuracy | 正确预测数 / 样本数 | 标签有没有分对 |
+| per_label | 某个真实标签内预测正确数 / 该标签题数 | 以金标类别分组的正确率，更接近该类 recall，不能冒充完整 precision/F1 报告 |
+| 覆盖率 | 覆盖层给出标签的题数 / 全部题数 | 规则能接住多少题 |
+| 覆盖部分正确率 | 覆盖且正确的题数 / 覆盖的题数 | 只在已覆盖题上判断；不包含未覆盖部分 |
+| Precision@k | 前 k 个实际返回文档中相关数 / 实际返回数；空列表为 0 | 注意源码分母为 len(top)，结果不足 k 时不是固定除以 k |
+| Recall@k | 前 k 个中的目标文档数 / 该题目标文档总数 | 需要的资料找全多少 |
+| Hit@k | 前 k 个中至少有一个目标则为 1，否则 0 | 至少找到一篇了吗 |
+| MRR | 第一个目标文档名次的倒数；未命中为 0，再取平均 | 第一篇正确资料排得越靠前越好 |
+| Faithfulness | 裁判 supported=true 的完成样本数 / 完成样本数 | 答案相对所给证据的支持性 |
+| 不支持率 | supported=false 的比例 | 包括裁判不可用时的失败计数，不能一概当事实性幻觉 |
+| 关键词命中 | gold_answer_contains 中所有字符串都出现在答案中 | 严格子串检查；同义词也可能被判未命中 |
+| 完成率 | completed / attempted | 是否隐藏了生成失败 |
+| 场景通过率 | 全部预设检查通过的场景数 / 场景数 | 多轮场景必须每步的已配置检查通过 |
+| P50 / P95 | 排序后取 round((p/100)×(N−1)) 下标，零基 | 源码的离散分位数，不是插值算法 |
+
+手算：某题的目标是文档 A、B，返回顺序为 C、A、B。则 P@1=0、R@3=2/2=1、Hit@3=1、RR=1/2。若返回 C、A、D，则 Hit@3 仍为 1，但 R@3 只有 1/2。因此 Hit@3 不能代替“资料找全”的 Recall@3。
+
+检索按文档去重，同一篇文档的多个 chunk 只计一次；去重后列表可能少于五项。本文保留逐题最终文档排名，不伪造未保存的原始 chunk 评分。
+
+## 7. 意图识别：分布、对照、逐类结果与失败
+
+### 7.1 当前分类链路
+
+```text
+原问题 / 结合历史补全的问题
+  → 规则结果作为备用
+  → DeepSeek 输出结构化 IntentResult
+  → JSON 解析与类型校验
+  → 可选 apply_intent_overlay 纠偏
+  → 返回 label、confidence、rationale、prompt_version
+```
+
+模型或解析失败时走规则兜底；离线 provider 也走规则。覆盖层只在匹配到确定短语时提供标签，否则留给模型。分类结果随后进入策略路由；意图本身既不提交业务写入，也不授予权限。
+
+要区分两个规则用途：`rule_based_intent` 是能给全体问题兜底的分类函数；`high_precision_intent` 是可以“不表态”的覆盖层。本轮所谓“规则基线”本身已调用高精度短语规则，不应说成完全不含覆盖逻辑的纯关键词消融。
+
+### 7.2 四组对照的实际数字
+
+| 组 | JSON 字段 | 样本/分母 | 结果 | 说明 |
+|---|---|---|---|---|
+| 规则基线 | intent_rules | 120 | 100/120，83.33% | 分类规则函数，包含当前高精度短语逻辑 |
+| DeepSeek，关覆盖层 | intent_v3_no_overlay | 120 | 119/120，99.17% | 当前 intent_v3，不是旧业务 v1/v2 |
+| DeepSeek，开覆盖层 | intent_v3 | 120 | 119/120，99.17% | 当前默认设置；异常 0、规则回退 0 |
+| 仅覆盖层 | intent_overlay | 覆盖 87/120 | 覆盖率 72.50%，覆盖部分正确 87/87 | 剩余 33 题未覆盖，不能写成全部 120 题正确 |
+
+开关覆盖层分别调用模型，两组当前汇总与误分相同。可以说“做了开关对照”，不能说“覆盖层把准确率提高到 99.17%”：本轮从关闭到开启没有观察到额外提升。相对规则多答对 19 题，在该开发集上相差约 15.83 个百分点。
+
+### 7.3 每一类具体表现
+
+{{CLASS_TABLE}}
+
+表中百分比按 JSON 保存的四位小数展示，正确数由类别题数和保存比例还原，并与总正确数核对；例如 lab_safety 实际为 18/19，JSON 将比例记为 0.9474。
+
+### 7.4 唯一保留的误分
+
+| 用户问题 | 金标 | 关闭覆盖层 | 开启覆盖层 |
+|---|---|---|---|
+| 夜间实验出现异常应该怎样上报 | lab_safety | lab_maintenance | lab_maintenance |
+
+这是“夜间安全事件上报”和“设备故障报修”的边界问题。不能用删题、改成预测标签或仅展示成功样例来掩盖；更合理的下一步是补独立边界题、审核标签规范，再比较是否改进。
+
+原始意图报告保存整体和逐类结果、错误样本，而非 120 次模型的全部原始响应。附录给出全部 120 题和金标，**不把金标抄成逐题预测日志**。当前也没有保存每题覆盖层介入前后的完整轨迹，不据汇总编造其纠正了多少题。
+
+### 7.5 面试怎么讲
+
+> 我把实验室问题分成 9 个实际评测类别，做了 120 题开发回归。规则答对 100 题，2026-10-31 测量版本的 DeepSeek 提示在覆盖层开关两组均答对 119 题，唯一错误是夜间异常上报与维修的边界。本轮证明当时模型分类相对规则更好，但没有证明覆盖层额外增益；题集参与过开发修正，不能当独立泛化成绩。
+
+## 8. 检索：四路对照与逐题失败
+
+### 8.1 相同点与不同点
+
+四组共用 75 个问题、相同知识库和目标文档。前三组分别取五个候选，CE 管线先取八个融合候选再重排保留五个。检索先返回 chunk，再按文档去重用于统计。
+
+| 路线 | 做什么 | 候选配置 |
+|---|---|---|
+| BM25 | 词面匹配召回 | top_k=5 |
+| BGE | 512 维语义向量召回 | top_k=5 |
+| BM25+BGE+RRF | 两路召回，按名次倒数融合 | 各路 top_k=5，融合保留 5 |
+| Hybrid+CE | 融合后用联合编码器细排 | 各路 top_k=8，融合保留 8，重排保留 5 |
+
+RRF 使用 `sum(1/(60+rank))`。它融合名次而非 BM25 和向量的原始分数，避免不同分数尺度直接相加。Cross-Encoder 在候选范围内评分，不会找回从未进入候选的资料。
+
+### 8.2 全部指标
+
+{{RETRIEVAL_TABLE}}
+
+相对 BM25，最终管线 P@1 从 51/75 到 59/75，净多 8 题排到首位，差约 10.67 个百分点；MRR 从 0.8056 到 0.8744。这个差值属于**整个管线**，不等于单独重排器的因果增益。
+
+BGE 单路的 Recall@3 低于 BM25，说明语义检索没有在每项指标上优于词面检索；两者结合的价值应依据当前题集衡量，不能泛称“融合一定更好”。
+
+### 8.3 最终管线首位仍未命中的 16 题
+
+{{RETRIEVAL_FAILURES}}
+
+首位不命中不代表完全没找回；看最后一列可以区分“排到第 2/3 位”和“本次最终列表未命中”。标注不是穷尽式相关性，表中的首位非金标也不自动等于内容毫无关联。全 75 题的四路目标排名见[逐题检索明细](evaluation-casebook.md#retrieval-cases)。
+
+### 8.4 与旧降级结果的关系
+
+10 月 30 日哈希融合 P@1 为 45.33%；10 月 31 日历史真实 BGE 融合为 73.33%。它能支持“当时的真实语义模型替换了较弱占位后端”的结论。历史词面重排路线 R@3 为 91.56%，10 月 31 日历史真实 CE 管线为 89.67%，因此不能说所有指标全面提升。不同业务和不同题集的旧成绩不直接用于当前简历；公开发布副本当前默认回退状态见 README。
+
+## 9. 生成：忠实度、自检与关键词
+
+### 9.1 实际协议
+
+75 个问题各比较无上下文、RAG、RAG+自检。证据是一次 BM25+BGE+RRF top_k=5 的结果；此任务**不额外调用 Cross-Encoder，也不执行完整 MULTI 循环**。因此生成表不能当作“整个 Self-RAG+重排系统”的消融。
+
+生成与裁判均为 DeepSeek。裁判检查 supported；如果初次 RAG 不支持，才调用 self_correct_answer 尝试证据约束重写，必要时抽取式回退。
+
+| 完成性检查 | 本轮记录 |
+|---|---|
+| attempted / completed | 75 / 75 |
+| completion_rate | 100% |
+| failures | 空列表，0 次 |
+| checker_failures | 无上下文 / RAG / 自检均为 0 |
+| 首轮 RAG 不支持 | 0/75 |
+| 本轮触发自纠错 | 0 次 |
+
+### 9.2 三组结果
+
+{{GENERATION_TABLE}}
+
+RAG 严格关键词全部匹配为 66/75。首轮答案全部通过支持性检查，因此自检后没有提高忠实度或关键词。无检索到自检的不支持率相对下降不能归因成“自纠错贡献”；代码中 hallucination_relative_drop 这个字段必须结合比较对象解释。
+
+### 9.3 9 条关键词未完全命中的问题
+
+{{GENERATION_MISSES}}
+
+这些分类是对已保存答案的人工阅读说明，不是新的盲评结果。本文没有为提高数字修改金标，也没有把同义词未匹配都宣布为语义正确。特别是 lr21、lr62，需要继续分析证据和答案完整性。
+
+### 9.4 为什么忠实度 100% 仍不能说“零错误”
+
+忠实度检查可能放过遗漏、过度承诺或系统能力错误。比如 lr57 的保存答案末尾说“提交费用异议申请”，而当前六个活动工具没有费用异议提交工具。这是已有结果中的能力边界问题，不能因为 supported=true 就忽略。这里记录它，没有声称已修复或通过新实验。
+
+保守拒答也可能通过支持性检查；同一个模型既生成又裁判存在相关偏差。需要独立模型/人工复核、正确性与完整性标注、专门的能力边界测试，才能补强结论。
+
+## 10. 端到端：32 场景与数据库闭环
+
+### 10.1 什么叫“端到端”
+
+从 ChatService 进入 LangGraph，经护栏、历史补全、意图、路由、检索或工具、生成、自检、记忆和持久化后检查结果。2026-10-31 的历史 E2E 使用真实 DeepSeek 和本地模型、隔离文件数据库；公开发布副本尚未重新运行该套真实模型 E2E。测试日期按运行时生成未来 UTC 窗口。
+
+### 10.2 每个 100% 的分母
+
+{{CHECK_TABLE}}
+
+总计 32/32 场景通过、51/51 请求完成。意图只检查了有显式金标的 26 次请求，策略只检查了 22 次；**不应写成 E2E 所有 51 次意图和策略都正确**。
+
+例如 le25 第二步“确认执行”的保存意图为 out_of_scope，服务端已经恢复合法确认提案，因此强制 AGENT 完成写入；该步只设置工单增量与完成检查，没有设置意图金标。这说明业务断言通过不等于所有中间标签都准确，详见[51 次请求明细](evaluation-casebook.md#e2e-turns)。
+
+### 10.3 24 条单轮的实际意图、策略与耗时
+
+{{SINGLE_E2E_TABLE}}
+
+表里的耗时为评测器外层计时 latency_ms，包含应用调用。与 ChatResponse 内部计时存在很小差异，不能把两者混用成完全相同值。表中没有记录真实内部节点逐步 trace；路径列是最终 strategy。
+
+### 10.4 8 个多轮工作流
+
+{{WORKFLOW_TABLE}}
+
+| 场景 | 具体检查 |
+|---|---|
+| le25 | 报修提案不新增工单 → 确认新增一条 → 重复确认不新增 |
+| le26 | 预约提案 → 重建服务/引擎 → 确认新增 → 查询时段回读 |
+| le27 | 查询设备后用“它在哪里”追问，核对设备指代 |
+| le28 | 报修提案在服务重建后仍能确认 |
+| le29 | 同时段第二次预约确认冲突，不再新增 |
+| le30 | 已确认预约在重建后重复确认，不重复插入 |
+| le31 | 缺预约字段先追问 → 用户补字段 → 确认写入 |
+| le32 | 多轮背景形成摘要 → 重建服务后回忆 ALPHA-7 |
+
+### 10.5 用一个真实报修例子解释数据库证据
+
+le25 第一轮“LAB-CF-01 持续振动，帮我登记报修”返回待确认 create_lab_maintenance_ticket；第二轮携服务端提案 ID 确认，工单数从 0 到 1；第三轮重复确认，工单仍为 1。这个证据比只看“成功”两个字更可靠。
+
+提案本身会保存到 pending_actions，工单未确认前不新增。15 分钟内确认恢复服务端原始工具和参数，不相信客户端重新发的一组动作参数。执行前继续核验业务条件。当前顺序幂等不等于高并发 exactly-once，也没有真实管理员审批或维修执行。
+
+### 10.6 MULTI 与恢复的验证范围
+
+四条 MULTI 场景 le15/le16/le17/le18 均记录检索轮数；le15 为 3 轮，其余为 1 轮充分即停。进入 MULTI 不表示必然查多次，也不表示已证明其比 SINGLE 更好。
+
+2026-10-31 历史真实模型 E2E 共重建 ChatService、图、数据库引擎和连接池 4 次，复用模型 provider 和同一 SQLite 文件。本地集成测试还用两个独立 Python 进程先提案、后确认；这两种测试都不等于主机重启、断电或多副本并发灾备。
+
+### 10.7 延迟与阶段耗时
+
+| 指标 | 本轮结果 |
+|---|---:|
+| 总耗时 P50 | 3858.7 ms |
+| 总耗时 P95 | 14034.4 ms |
+| 总耗时平均 | 5281.9 ms |
+| 意图阶段 P50 | 885.6 ms |
+| 生成 LLM 阶段 P50 | 1209.1 ms |
+| 检索阶段 P50 | 0 ms |
+| 工具阶段 P50 | 0 ms |
+
+后两项为零，是因为一部分路径不检索或不执行工具，导致全请求分布的中位数为零；不能说检索或工具不耗时。各阶段定义也不是全部模型调用的完备成本账本，不能将生成节点 token 统计当成所有意图、路由、改写、裁判调用的总费用。
+
+网络、CPU、本轮任务并行及策略分布影响耗时，不能直接与旧 16 题的 P95 比较推断性能退化或提升，更不能写为生产 SLA。
+
+## 11. 自动化测试与功能证据
+
+冻结汇总中的 verification 记录测量时版本后端 185 passed、前端 3 tests passed、frontend_build/pip_check/ruff_check passed。公开发布副本后来裁剪了无关代码，当前验证数以仓库 README 为准，不能把两套代码的测试计数混为一谈。
+
+| 机制 | 代表测试文件 | 检查要点 |
+|---|---|---|
+| 实验室分类和路由 | [test_labmate_domain.py](../tests/unit/test_labmate_domain.py)、[test_intent_overlay.py](../tests/unit/test_intent_overlay.py) | 问候/规则/设备/危险请求，字段和策略 |
+| 写操作确认 | [test_action_confirmation.py](../tests/unit/test_action_confirmation.py) | 缺字段不造提案、用户/会话绑定、需要确认 |
+| 预约/报修落库 | [test_labmate_repository.py](../tests/integration/test_labmate_repository.py) | 记录持久化、预约冲突与工单 |
+| 跨轮和恢复 | [test_conversation_workflows.py](../tests/integration/test_conversation_workflows.py) | 文件库、独立进程、重复、过期、指代、摘要和 SSE 提案先保存 |
+| 多轮检索 | [test_self_rag.py](../tests/unit/test_self_rag.py) | 足够早停、补查、去重、最多轮数、模型失败回退 |
+| 生成后修正 | [test_self_correct.py](../tests/unit/test_self_correct.py) | 受控失败样例能进入重写分支；不是本轮真实模型收益证据 |
+| 检索基础 | [test_rrf.py](../tests/unit/test_rrf.py)、[test_metrics.py](../tests/unit/test_metrics.py)、[test_reranker.py](../tests/unit/test_reranker.py) | 融合、指标公式与重排契约 |
+
+历史测量版本的 185 项包含通用基础和历史兼容业务测试，不全是新实验室场景，也不是代码覆盖率。测试数量不能换算成覆盖百分比。pytest 使用测试 provider 和受控替身，不能代替 DeepSeek/BGE/CE 的真实效果评测；公开发布副本的测试结果请以仓库 README 为准。
+
+## 12. 失败修复与完整复测
+
+| 阶段 | 保存事实 | 如何处理 |
+|---|---|---|
+| 失败定位与修复 | 能力咨询误拒、报修占位参数、多轮背景误路由、字段补全 | 修正提示和逻辑后对全部固定场景复测 |
+| 最终完整任务 | 四份独立任务报告及其 SHA256 随版本发布 | 汇总保留最终输入、模型、包版本和测量路径 |
+| 最终 E2E | 32/32 场景 | 开发回归修复结果，非独立泛化提升证据 |
+
+面试可以用“报修缺字段时不能生成可执行占位申请”讲修复过程：先描述失败触发条件，再说明哪层校验缺失，最后指出完整回归与数据库检查。不能把 26→32 的改善包装成独立测试集上的泛化提升。
+
+## 13. 简历可用表述与边界
+
+### 13.1 一段适合精简的项目描述
+
+> 设计并实现高校共享仪器运维 Agentic RAG 助手，基于 LangGraph 编排意图分类、五策略路由、混合检索和受控工具调用；结合 BM25、BGE 向量、RRF 与 Cross-Encoder，在 75 题开发回归集上检索 P@1 达 78.67%，较 BM25 管线高 10.67 个百分点；实现预约/报修提案持久化、人工确认、顺序幂等和基础对话记忆，完成 32 个端到端场景及数据库状态验证。
+
+字数有限时保留机制、结果和“开发回归”条件，面试展开 30 篇演示语料和本地模拟业务边界。检索差值属于管线对照，不单独归因 CE。
+
+### 13.2 哪些数字可以怎么说
+
+| 已有事实 | 合适表达 | 不应替换成 |
+|---|---|---|
+| 意图 119/120 | 120 题、9 类开发回归，当前 99.17% | 真实校园用户普遍准确率 99.17% |
+| 开关均 119/120 | 完成覆盖层开/关对照，未观察额外收益 | 覆盖层将准确率显著提高 |
+| 检索 59/75 首位正确 | 最终管线 P@1 78.67%，BM25 为 68.00% | Cross-Encoder 单独贡献全部 10.67 个百分点 |
+| RAG 支持性 100% | 同模型裁判支持性 100%，关键词 66/75 | 人工事实核验零错误、生产零幻觉 |
+| 自纠错本轮触发 0 次 | 实现自检分支，当前未测出额外收益 | 自纠错显著降低本轮 RAG 幻觉 |
+| E2E 32/32 | 32 场景、51 请求，检查条件全部通过 | 51 次自然语言答案完全正确 |
+| 持久确认和重复保护 | 服务/进程恢复与顺序重复确认已测 | 并发 exactly-once、生产灾备已验收 |
+| 多节点状态图 | 单 Agent 的 Agentic RAG 工作流 | 多 Agent 协作系统 |
+
+## 14. 面试追问与回答
+
+### 14.1 “120 题是哪里来的？怎么知道不是随便写个数字？”
+
+题目在 eval/dataset/labmate/intent.jsonl，按非空行读取并检查唯一 ID；9 类分布见第 5 节。JSON 保存每组 n=120、accuracy、per_label、mismatches。固定输入哈希和四份来源报告都可核对。本次文档生成还离线复算了检索、关键词和 E2E 分母；但题集是开发者 AI 辅助整理的开发回归，不是假装真实用户独立标注。
+
+### 14.2 “意图和路由是不是一回事？”
+
+不是。意图是主题，例如 lab_booking；策略是怎么处理，例如询问预约制度可检索、查询时段要读工具、申请预约需确认后写入。分类准确不保证业务动作正确，所以 E2E 还检查策略、提案和数据库变化。
+
+### 14.3 “为什么需要覆盖层？这次提高了多少？”
+
+覆盖层处理确定短语并可作为规则兜底的一部分，结构上有保留价值；本轮开关均 119/120，观察到的额外改善为零。不能为了简历强行说提升。仅覆盖层覆盖 87/120，正确 87/87，也不能把未覆盖的 33 题忽略。
+
+### 14.4 “为什么准确率高，仍不能说明上线就好用？”
+
+只有 120 道开发题，部分提示针对失败调过；类别较少且表达范围有限，没有独立真实用户问题、双人标注一致性或跨学校验证。高分说明当前回归集表现，不是生产泛化承诺。
+
+### 14.5 “重排究竟提高了多少？”
+
+整个最终管线相对 BM25 P@1 高约 10.67 个百分点；相对 RRF 首位正确数从 55/75 到 59/75，多 4 题，约 5.33 个百分点（保存百分比先四舍五入再相减会有末位差异）。但候选从 5 改到 8→5，不能全归因重排。应固定同一候选池做配对对照，才能更清楚评价 CE 贡献。
+
+### 14.6 “既然忠实度 100%，为什么还有 9 道关键词没命中？”
+
+支持性和完整性不是同一个问题。答案可以保守、遗漏某项仍受证据支持；严格子串也会漏判同义表述。第 9 节列了全部 9 题，其中既有字面问题也有检索不足、内容遗漏与能力边界问题，不能一律说指标误判。
+
+### 14.7 “Self-RAG 和答案自纠错有什么区别？有效吗？”
+
+前者在检索中判断证据是否充分，后者在生成后判断答案是否受支持。MULTI 真实场景已运行，纠错逻辑有受控单测，但本轮生成未触发纠错，完整 MULTI 对比也没做完，当前不能承诺其额外效果。
+
+### 14.8 “为什么不只看助手回复‘成功’，还要查数据库？”
+
+模型文字不代表真实业务写入。E2E 对提案、确认和重复步骤检查记录增量，还做时段回读。未确认不新增、确认才新增、重复不新增，是可审查的业务证据。
+
+### 14.9 “32/32 是不是没有任何问题？”
+
+不是。每步只执行显式配置的断言：意图 26 次、策略 22 次，其他可能只检查数据库增量。le25 的确认步就出现 out_of_scope 标签但业务执行正确。因此通过率只对应这些检查，不能扩展成所有中间判断都对。
+
+### 14.10 “历史测量版本的 185 项测试和真实模型评测是什么关系？”
+
+前者确认当时版本的代码逻辑与边界，在测试 provider 上可重复；后者在 2026-10-31 实际运行 DeepSeek 和本地权重。两者互补，不能把单测 passed 当成真实模型准确率，也不能只靠模型高分忽略写入/权限/异常测试。公开发布副本的验证状态见 README。
+
+## 15. 未测项与后续实验
+
+| 项目 | 目前证据 | 后续如何补强 |
+|---|---|---|
+| 独立意图集 | 120 题开发回归 | 不参与调提示的真实问题、明确边界标签、逐题输出 |
+| 分类细节 | per_label 正确率、误分列表 | 完整逐题预测、混淆矩阵、各类 precision/recall/F1 |
+| 重排归因 | 四管线，但候选池不完全相同 | 同一批候选 CE 开/关配对对照 |
+| 自纠错收益 | 受控单测，本轮未触发 | 独立错误回答集、人工复核纠正质量 |
+| MULTI 收益 | 四个真实场景运行 | 固定复杂问题比较 SINGLE/MULTI 的质量、轮数与成本 |
+| 生成质量 | 同模型裁判、严格关键词 | 人工或独立模型，多维正确性/完整性/能力边界标注 |
+| 并发写入 | 顺序重复、冲突和恢复 | 首次并发排他、数据库级预约冲突约束 |
+| 运行与身份 | 本地模拟、请求体 user_id | 可信校园登录、真实审批/维修平台、时区与负载验证 |
+| 记忆与成本 | 有界历史和摘要 | 长对话失真、回答前完整 token 预算、全链路成本 |
+
+这些项目明确未测或未做，不通过补文档把它们变成“已完成”。更详细实现边界见[限制](12-limitations.md)。
+
+## 16. 原始证据与维护方式
+
+### 16.1 四份最终任务报告
+
+{{SOURCE_TABLE}}
+
+总汇总：[all_20261031T140024Z.json](../eval/reports/all_20261031T140024Z.json)。固定命名报告用于复核；latest.json 会被以后运行覆盖，不作为唯一长期引用。实测后 Self-RAG 跟踪代码仅有空白格式调整，原始快照和 AST 等价记录见汇总 post_evaluation_formatting。
+
+### 16.2 后续怎么维护
+
+修改模型、代码、语料或金标，应重跑受影响任务并另存报告；仅整理文档则核对已有证据，保持实验日期。本页数字表与[逐题明细](evaluation-casebook.md)、[题集说明](../eval/dataset/labmate/README.md)由同一离线脚本产生，避免手工改一处遗漏其他位置。
+
+[简明实测记录](../eval/LABMATE_MEASURED.md)保留概览；[零基础说明](从零理解LabMate.md)解释术语，[面试问答](interview/labmate-question-bank.md)用于口述练习。
+"""
+    replacements = {
+        "LABEL_TABLE": table(["标签", "业务含义", "题数", "占比", "题集中的真实样例"], label_rows),
+        "CLASS_TABLE": table(
+            ["金标类别", "规则", "DeepSeek 关覆盖", "DeepSeek 开覆盖"], class_rows
+        ),
+        "RAG_SAMPLE": json.dumps(sample, ensure_ascii=False, indent=2),
+        "RETRIEVAL_TABLE": table(["路线", "P@1", "R@3", "Hit@1", "Hit@3", "MRR"], retrieval_rows),
+        "RETRIEVAL_FAILURES": table(
+            ["ID", "问题", "金标文档", "实际首位", "首个金标名次"], retrieval_failures
+        ),
+        "GENERATION_TABLE": table(
+            ["条件", "裁判忠实度", "裁判不支持率", "全部关键词命中"], gen_rows
+        ),
+        "GENERATION_MISSES": table(
+            ["ID", "问题", "未匹配的金标子串", "已有答案的阅读说明"], misses
+        ),
+        "CHECK_TABLE": table(["检查", "通过/检查数", "具体含义"], checks),
+        "SINGLE_E2E_TABLE": table(
+            ["ID", "问题", "实际意图", "实际策略", "检索轮数", "耗时 ms", "预设检查"], first_cases
+        ),
+        "WORKFLOW_TABLE": table(
+            ["ID", "场景名称", "轮数", "实际策略顺序", "场景结果"], workflow_rows
+        ),
+        "SOURCE_TABLE": table(["原始报告", "SHA256"], sources),
+    }
+    for key, value in replacements.items():
+        text = text.replace("{{" + key + "}}", value)
+    assert "{{" not in text
+    return text
+
+
+def build_casebook(r: dict, intents: list[dict], rag: list[dict]) -> str:
+    sections = [
+        r"""# LabMate 评测逐题明细
+
+文档整理：2026-11-01；实验日期：2026-10-31。来源为冻结的 [all_20261031T140024Z.json](../eval/reports/all_20261031T140024Z.json) 和活动 JSONL。本文离线整理，没有新增模型调用。
+
+阅读顺序：[完整评测报告](14-evaluation-report.md) → 本页找题目 → 对应 JSON 查看原始答案/结果。可用编辑器搜索 li、lr、le 编号。
+
+- [120 道意图题与金标](#intent-cases)
+- [75 道检索题与四路排名](#retrieval-cases)
+- [75 道生成题及严格关键词结果](#generation-cases)
+- [32 场景中的 51 次请求](#e2e-turns)
+- [原始答案逐题阅读](#answer-details)
+
+<a id="intent-cases"></a>
+
+## 1. 120 道意图题与金标
+
+以下表格是题目和预期类别，不是伪造的逐条模型预测。实际意图 JSON 保存逐类汇总和错误列表，没有保存每次模型的完整原始响应。唯一误分为“夜间实验出现异常应该怎样上报”：lab_safety → lab_maintenance，开/关覆盖均出现。
+"""
+    ]
+    sections.append(
+        table(
+            ["ID", "问题", "金标标签", "中文主题"],
+            [[row["id"], row["query"], row["intent"], LABELS[row["intent"]]] for row in intents],
+        )
+    )
+    sections.append("""<a id="retrieval-cases"></a>
+
+## 2. 75 道检索题与四路排名
+
+各路线列出**每一个金标文档在最终去重文档列表中的名次**，顺序与金标列对应；“—”为该路线最终列表未找到。此表不是相似度分数。最终管线使用 8→5，其他三路为 5，不能据此把全部差异归因于重排。
+""")
+    cases = [{x["id"]: x for x in s["cases"]} for s in r["retrieval"]["systems"]]
+    rows = []
+    for item in rag:
+        ranks = []
+        for system in cases:
+            docs = system[item["id"]]["retrieved"]
+            ranks.append(
+                " / ".join(
+                    str(docs.index(d) + 1) if d in docs else "—" for d in item["relevant_doc_ids"]
+                )
+            )
+        rows.append([item["id"], item["query"], " / ".join(item["relevant_doc_ids"]), *ranks])
+    sections.append(
+        table(
+            ["ID", "问题", "金标文档（顺序）", "BM25 名次", "BGE 名次", "RRF 名次", "CE 管线名次"],
+            rows,
+        )
+    )
+    sections.append("""<a id="generation-cases"></a>
+
+## 3. 75 道生成题与严格关键词结果
+
+“支持”是同一 DeepSeek 裁判的 supported，不是人工事实核查；“未命中”按子串规则计算，不一概表示语义错误。全量生成原文见本页末尾逐题答案。
+""")
+    golds = {x["id"]: x for x in rag}
+    rows = []
+    for item in r["generation"]["cases"]:
+        missing = [
+            w for w in golds[item["id"]]["gold_answer_contains"] if w not in item["rag_answer"]
+        ]
+        rows.append(
+            [
+                item["id"],
+                " / ".join(golds[item["id"]]["gold_answer_contains"]),
+                "支持" if item["rag_supported"] else "不支持",
+                "支持" if item["checked_supported"] else "不支持",
+                "通过" if item["rag_keyword_hit"] else "未命中",
+                " / ".join(missing) or "—",
+            ]
+        )
+    sections.append(
+        table(
+            ["ID", "全部预期关键词", "RAG 支持性", "自检后支持性", "RAG 全词命中", "未匹配子串"],
+            rows,
+        )
+    )
+    sections.append("""<a id="e2e-turns"></a>
+
+## 4. 32 场景中的 51 次请求
+
+“通过”仅针对检查列中配置的条件。意图/策略是响应实际值，不保证每一步均有对应金标。工单、预约列为当步数据库数量增量，不是历史总量；重复确认预期为 0。
+""")
+    rows = []
+    for scenario in r["e2e"]["cases"]:
+        for turn in scenario["turns"]:
+            delta = {
+                key: turn["database_after"][key] - turn["database_before"][key]
+                for key in ("ticket", "reservation")
+            }
+            rows.append(
+                [
+                    f"{scenario['id']}.{turn['turn']}",
+                    turn["query"],
+                    turn["intent"] or "—",
+                    turn["strategy"] or "—",
+                    turn["retrieval_rounds"],
+                    delta["ticket"],
+                    delta["reservation"],
+                    f"{turn['latency_ms']:.1f}",
+                    ", ".join(k + ("✓" if v else "✗") for k, v in turn["checks"].items()),
+                ]
+            )
+    sections.append(
+        table(
+            [
+                "场景.轮",
+                "实际请求",
+                "实际意图",
+                "实际策略",
+                "检索轮数",
+                "工单增量",
+                "预约增量",
+                "耗时 ms",
+                "本步预设检查",
+            ],
+            rows,
+        )
+    )
+    sections.append("""<a id="answer-details"></a>
+
+## 5. 原始答案逐题阅读
+
+下面保留已保存的模型原文；不修正其措辞或过度承诺，以便复盘。生成任务没有保存 naive_supported 的逐题标志，只保留该组汇总，不为其补造逐题裁判记录。本轮 checked_answer 与 rag_answer 全部相同，故每题只展示一次 RAG 原文；二者可在原始 JSON 分别核对。
+""")
+    for item in r["generation"]["cases"]:
+        assert item["rag_answer"] == item["checked_answer"]
+        sections.append(
+            f"### {item['id']} · {item['query']}\n\n**无上下文原答：**\n\n{item['naive_answer']}\n\n**RAG 原答（本轮自检后相同）：**\n\n{item['rag_answer']}"
+        )
+    sections.append(
+        "## 6. E2E 用户可见原答\n\n这里是最终用户可见回答；不声称保存了所有内部 LLM 调用或完整 LangGraph 节点轨迹。"
+    )
+    for scenario in r["e2e"]["cases"]:
+        for turn in scenario["turns"]:
+            sections.append(
+                f"### {scenario['id']}.{turn['turn']} · {turn['query']}\n\n{turn['answer']}"
+            )
+    return "\n\n".join(sections)
+
+
+def build_dataset_readme(intents: list[dict], rag: list[dict], e2e: list[dict]) -> str:
+    counts = Counter(x["intent"] for x in intents)
+    rows = [
+        [
+            f"`{label}`",
+            meaning,
+            counts[label],
+            next(x["query"] for x in intents if x["intent"] == label),
+        ]
+        for label, meaning in LABELS.items()
+    ]
+    return (
+        """# LabMate 活动评测题集：120 题、9 类从哪里来
+
+这里是默认评测器读取的实验室运维题集，不是根目录下保留的旧业务题集。题目由开发者 AI 辅助整理并用于修正提示/实现，属于开发回归，未做独立用户盲评。
+
+| 文件 | 数量 | 字段与作用 |
+|---|---|---|
+| [intent.jsonl](intent.jsonl) | 120 题、9 类 | id=唯一编号，query=问题，intent=预期标签（金标） |
+| [rag.jsonl](rag.jsonl) | 75 题，覆盖 30 个目标文档 | relevant_doc_ids=目标文档 stem；gold_answer_contains=必须全部出现的子串 |
+| [e2e.jsonl](e2e.jsonl) | 24 单轮+8 多轮，32 场景/51 请求 | steps 组织多轮，expect_* 指定各步检查，confirm_previous/restart_before 驱动确认和恢复 |
+| [coverage-v2.json](coverage-v2.json) | 固定协议 | 保存扩充规则与意图/E2E 输入哈希，不表示独立留出集 |
+
+## 9 类的数量和真实例句
+
+"""
+        + table(["标签", "业务主题", "题数", "题集中例句"], rows)
+        + """
+
+`lab_booking` 是预约主题，不等于写入授权；`human_handoff` 目前只指导联系管理员，没有真实通知/转接工具。代码兼容枚举保留其他标签，不能把“当前题集9类”说成“源码仅有9个枚举”。
+
+## 评测入口和已测结果
+
+- [完整报告的意图识别章节](../../../docs/14-evaluation-report.md#7-意图识别分布对照逐类结果与失败)：四组对照、各类分数、失败和面试解释。
+- [120 题可读表](../../../docs/evaluation-casebook.md#intent-cases)：全量问题和金标，不把金标冒充模型预测。
+- [2026-10-31 意图原始 JSON](../../reports/intent_20261031T135559Z.json)：intent_rules、intent_overlay、intent_v3_no_overlay、intent_v3。
+- [eval/runner.py](../../runner.py)：INTENT_PATH/RAG_PATH/E2E_PATH 和 eval_intent_* 等入口。
+- [零基础项目说明](../../../docs/从零理解LabMate.md)：分类链路和覆盖层解释。
+
+规则 100/120；DeepSeek 开/关覆盖均 119/120。仅覆盖层覆盖 87/120，覆盖部分正确 87/87；未覆盖 33 题不能算已正确。检索金标不穷尽所有相关资料，75 题中有13题标多篇目标文档。
+
+只读本目录不产生 API 费用。重新实验使用项目根目录 scripts/evaluate-real.ps1；生成文档的 build-evaluation-docs.py 只读取冻结报告，不重新评分或修改本目录 JSONL。
+"""
+    )
+
+
+def main() -> None:
+    report = json.loads(REPORT.read_text(encoding="utf-8"))
+    intents, rag, e2e = load_rows("intent"), load_rows("rag"), load_rows("e2e")
+    audit = check_evidence(report, intents, rag, e2e)
+    document = build_report(report, intents, rag, e2e)
+    details = build_casebook(report, intents, rag)
+    dataset_readme = build_dataset_readme(intents, rag, e2e)
+    write(DOC, document)
+    write(DETAIL, details)
+    write(DATA / "README.md", dataset_readme)
+    print(
+        json.dumps(
+            {
+                "evidence_checked": audit,
+                "written": [str(p.relative_to(ROOT)) for p in (DOC, DETAIL, DATA / "README.md")],
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+
+
+if __name__ == "__main__":
+    main()

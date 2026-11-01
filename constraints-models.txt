@@ -1,0 +1,10 @@
+# Verified Windows CPU model runtime; use with pip install -e ".[rerank]" -c constraints-models.txt
+torch==2.15.0
+sentence-transformers==3.4.1
+transformers==4.57.6
+huggingface-hub==0.36.2
+tokenizers==0.22.2
+safetensors==0.8.0
+scikit-learn==1.9.1
+scipy==1.18.1
+modelscope==1.40.2

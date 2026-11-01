@@ -1,0 +1,7 @@
+{
+  "name": "equipment_booking",
+  "description": "共享仪器预约规则、时段查询与待审核申请",
+  "triggers": ["预约仪器", "预约设备", "预约时段", "帮我预约", "申请预约"],
+  "steps": ["确认设备和时段", "检索预约及培训要求", "查询演示台账占用", "如用户明确要求申请则创建待审核预约"],
+  "tools": ["search_knowledge", "search_lab_equipment", "get_lab_equipment_status", "check_lab_equipment_availability", "request_lab_equipment_reservation"]
+}

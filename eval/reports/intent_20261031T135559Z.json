@@ -1,0 +1,382 @@
+{
+  "intent_rules": {
+    "backend": "rules",
+    "prompt_version": "intent_rules_v1",
+    "n": 120,
+    "accuracy": 0.8333,
+    "per_label": {
+      "greeting": 0.375,
+      "chitchat": 0.375,
+      "lab_safety": 0.7368,
+      "lab_booking": 1.0,
+      "lab_equipment": 0.8824,
+      "lab_maintenance": 1.0,
+      "human_handoff": 1.0,
+      "out_of_scope": 0.7273,
+      "faq_policy": 1.0
+    }
+  },
+  "intent_overlay": {
+    "backend": "overlay",
+    "prompt_version": "intent_overlay_v1",
+    "n": 120,
+    "uncovered": 33,
+    "coverage": 0.725,
+    "precision_when_covered": 1.0,
+    "covered_per_label": {
+      "greeting": 1.0,
+      "chitchat": 1.0,
+      "lab_safety": 1.0,
+      "lab_booking": 1.0,
+      "lab_equipment": 1.0,
+      "lab_maintenance": 1.0,
+      "human_handoff": 1.0,
+      "out_of_scope": 1.0
+    }
+  },
+  "intent_v3_no_overlay": {
+    "backend": "deepseek",
+    "prompt_version": "intent_v3",
+    "overlay": false,
+    "n": 120,
+    "errors": 0,
+    "rule_fallbacks": 0,
+    "accuracy": 0.9917,
+    "per_label": {
+      "greeting": 1.0,
+      "chitchat": 1.0,
+      "lab_safety": 0.9474,
+      "lab_booking": 1.0,
+      "lab_equipment": 1.0,
+      "lab_maintenance": 1.0,
+      "human_handoff": 1.0,
+      "out_of_scope": 1.0,
+      "faq_policy": 1.0
+    },
+    "mismatches": [
+      {
+        "query": "夜间实验出现异常应该怎样上报",
+        "gold": "lab_safety",
+        "pred": "lab_maintenance"
+      }
+    ]
+  },
+  "intent_v3": {
+    "backend": "deepseek",
+    "prompt_version": "intent_v3",
+    "overlay": true,
+    "n": 120,
+    "errors": 0,
+    "rule_fallbacks": 0,
+    "accuracy": 0.9917,
+    "per_label": {
+      "greeting": 1.0,
+      "chitchat": 1.0,
+      "lab_safety": 0.9474,
+      "lab_booking": 1.0,
+      "lab_equipment": 1.0,
+      "lab_maintenance": 1.0,
+      "human_handoff": 1.0,
+      "out_of_scope": 1.0,
+      "faq_policy": 1.0
+    },
+    "mismatches": [
+      {
+        "query": "夜间实验出现异常应该怎样上报",
+        "gold": "lab_safety",
+        "pred": "lab_maintenance"
+      }
+    ]
+  },
+  "resume_bullets": [
+    "意图识别：120 条 intent_v3+overlay 99.2%；规则 83.3%；覆盖层覆盖率 72.5%，命中样本准确率 100.0%"
+  ],
+  "environment": {
+    "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "packages": {
+      "torch": "2.15.0",
+      "sentence-transformers": "3.4.1",
+      "transformers": "4.57.6",
+      "numpy": "2.5.4",
+      "scikit-learn": "1.9.1"
+    },
+    "llm_model": "deepseek-chat",
+    "knowledge_dir": "knowledge/labops",
+    "input_sha256": {
+      "eval/dataset/labmate/intent.jsonl": "3c04d400e7db79665e927e223aa4ceeaa8ec594e80e4f4b4a827b5cef17fda64",
+      "eval/dataset/labmate/rag.jsonl": "ff5e2b1d813443ce9343faab82f0cdcbb0951385552c4428eeeeaeb13048494a",
+      "eval/dataset/labmate/e2e.jsonl": "d80efe7fa523b5b8ec16c373aca77d6aa8d268d988d903f26ef8f39f47a4105b",
+      "eval/dataset/labmate/coverage-v2.json": "ec98eefbffb7fee61138dee7cd07842e738ffdabee8e7587c4b75f5f3e9fd2b7",
+      "knowledge/labops/01-laboratory-safety-governance.md": "460b55bd31729335f8bce5f487e7218ef2260da8067e975c887ee5102ddfff16",
+      "knowledge/labops/02-shared-instrument-booking.md": "92827afdf1ceebc3c670ce3a93c8811f2e8bc433467f2c4a22724eb1e41605d6",
+      "knowledge/labops/03-instrument-fault-reporting.md": "b949d9f7852b54ba93f9c3118d06e4e5f4fdafbd3c4f146147f6b1ff7ae41c3c",
+      "knowledge/labops/04-equipment-operation-boundaries.md": "5e24fbd5da2f91605818ab30ee0d5c40bb6e5c4c866f2a02b9575b5a2713a9da",
+      "knowledge/labops/05-demo-equipment-catalog.md": "1edd841940beaec79c0e27a831de2c2745ccb468a967106af4206493897b05fa",
+      "knowledge/labops/06-labops-multi-hop-cases.md": "b3451b98158bb60d45558fd0e8900bcfabab9f33e538558cdde4bcca6249aa0e",
+      "knowledge/labops/demo-ops-access-and-roles.md": "9ae77b4b7eacf28b85a147c3b008fc3a3f8f94e8dca6ee9b2af10b3613b55b78",
+      "knowledge/labops/demo-ops-billing-review.md": "fc84c499e9992d2bb0c0564129027604017fbc2b6602591b27bb5723e01af47f",
+      "knowledge/labops/demo-ops-booking-conflicts.md": "e77b3dbe16c8c88ef517ebd98b200c8314c67e63f7a56d9935f15cd42b579363",
+      "knowledge/labops/demo-ops-cancellation-no-show.md": "8cd4b8a516d0ce1f3248295ddccdc026903aa602c54588abef5794e8142f521b",
+      "knowledge/labops/demo-ops-consumables-handover.md": "f37ea363ab26d557420a47496e4c6d5fd6ff320ab43166c3f2468e026ebc00ba",
+      "knowledge/labops/demo-ops-cross-topic-cases.md": "b69e8d6fd6befbaf6f53169d3c645accb919e565f272caaa53aa136060556f27",
+      "knowledge/labops/demo-ops-data-export.md": "ffc56ed322002059d58950cb401f1a131c8a6a45483356353582b592d46f6581",
+      "knowledge/labops/demo-ops-document-versioning.md": "475eb639c5800a3cfdc25aaaf63ab9487fa5e82b672b4a9cb419e759ad857337",
+      "knowledge/labops/demo-ops-external-visitors.md": "1b60cb223239f44538ef5bba2c3677546ff4425afb4807b2382e8551eebe223d",
+      "knowledge/labops/demo-ops-fault-priority-and-status.md": "53398456807c769945e2f7b5de15d32b979bb25d4d71cb531917c6d39db4d560",
+      "knowledge/labops/demo-ops-fault-ticket-fields.md": "f6ab5af1fc02b784ee44c58085190f27589e9a05634b7d32a073ef005d222095",
+      "knowledge/labops/demo-ops-maintenance-windows.md": "fb0914d97e8898afe9d6408242346c6d75dced9ce4c31f6e9e2d683903c6a0ca",
+      "knowledge/labops/demo-ops-preventive-maintenance.md": "c8a713c7b2f0ec185283a0d87b08cb65569d00a022cdaeaf18950e423740ead2",
+      "knowledge/labops/demo-ops-repair-acceptance.md": "99ef7ac00325377ff02cca8926c7402505308357ad79eaf92dc8250315c3562d",
+      "knowledge/labops/demo-ops-reservation-request.md": "7ef2e812e5403c361f49ef69d43af0dbb35a31b465b557196427f1e9f66455ae",
+      "knowledge/labops/demo-ops-sample-handover.md": "e3f45d6551de251597a372a6186a7a30c9e790939f52b63d76d28e396ee66a06",
+      "knowledge/labops/demo-ops-shift-handover.md": "2b944886464eabcaf15c5accb896165cf9f028a76f9171c92057ea3f2149fb4c",
+      "knowledge/labops/demo-ops-training-authorization.md": "a392ab43fbdfd31cfb8c8c2501db1ada39cc44070de585bba92b7c090af26fc5",
+      "knowledge/labops/demo-ops-usage-logs.md": "934418709acd11b6932d2d3bc4bd4ff4993597c5a836006a0a81d874d656aded",
+      "knowledge/labops/demo-safety-biosample-declaration.md": "80a40a11d56ae9e964b52d63d9d5d25587e9e8c20d921ca0fb279bc0e5289d07",
+      "knowledge/labops/demo-safety-chemical-information.md": "c04bff7e0ed7ca973a4dd7ea40fdb50fc177ee3074a30fa0bcdfc7a27f11eec1",
+      "knowledge/labops/demo-safety-device-boundaries.md": "14374eb7b080dbf4d961bd22df6c75f08932c429b7f9f790b9df753ad6e54c9b",
+      "knowledge/labops/demo-safety-electrical-facilities.md": "93caedff013a864e7b03175a5e1c27b40f206ff95a5dab0eac5d04366af16090",
+      "knowledge/labops/demo-safety-emergency-report.md": "39c9e032091332aa93e885f117f015c9a79f0a42b4d04fafbd1719305332188c",
+      "knowledge/labops/sources/README.md": "b8b788ea14453f1daa973d631e71794886540767d0c1fbc5920564f5bd93e68d"
+    },
+    "model_snapshots": {
+      "downloaded_at": "2026-10-31T12:56:38.649164+00:00",
+      "models": [
+        {
+          "repo_id": "BAAI/bge-small-zh-v1.5",
+          "revision": "7999e1d3359715c523056ef9478215996d62a620",
+          "path": "data/local/models/bge-small-zh-v1.5",
+          "files": [
+            {
+              "name": "1_Pooling/config.json",
+              "bytes": 190,
+              "sha256": "aaa8861589f80c961a03cc86c7eeaef7605c1676b9ab55329d33a304738769c6"
+            },
+            {
+              "name": "README.md",
+              "bytes": 27670,
+              "sha256": "c48a4eeea77f6b1d38b48ec1c5b8d4f86d5550cc43fa345a0db1b2ca1d082369"
+            },
+            {
+              "name": "config.json",
+              "bytes": 776,
+              "sha256": "3853a7979202c348751b753e36f579c41d8da7d36af617d3d907e1fc9b441f2a"
+            },
+            {
+              "name": "config_sentence_transformers.json",
+              "bytes": 124,
+              "sha256": "940d5f50db195fa6e5e6a4f122c095f77880de259d74b14a65779ed48bdd7c56"
+            },
+            {
+              "name": "model.safetensors",
+              "bytes": 95827648,
+              "sha256": "354763b9b1357bc9c44f62c6be2276321081ed2567773608c0d0785b61d5a026"
+            },
+            {
+              "name": "modules.json",
+              "bytes": 349,
+              "sha256": "84e40c8e006c9b1d6c122e02cba9b02458120b5fb0c87b746c41e0207cf642cf"
+            },
+            {
+              "name": "sentence_bert_config.json",
+              "bytes": 52,
+              "sha256": "84e39fda68ccbff05bfa723ae9c0e70e23e2ec373b76e0f8c6e71af72a693cbf"
+            },
+            {
+              "name": "special_tokens_map.json",
+              "bytes": 125,
+              "sha256": "b6d346be366a7d1d48332dbc9fdf3bf8960b5d879522b7799ddba59e76237ee3"
+            },
+            {
+              "name": "tokenizer.json",
+              "bytes": 439125,
+              "sha256": "48cea5d44424912a6fd1ea647bf4fe50b55ab8b1e5879c3275f80e339e8fae26"
+            },
+            {
+              "name": "tokenizer_config.json",
+              "bytes": 367,
+              "sha256": "e6f3b96db926a37d4039995fbf5ad17de158dfb8f6343d607e4dbaad18d75f5a"
+            },
+            {
+              "name": "vocab.txt",
+              "bytes": 109540,
+              "sha256": "45bbac6b341c319adc98a532532882e91a9cefc0329aa57bac9ae761c27b291c"
+            }
+          ]
+        },
+        {
+          "repo_id": "BAAI/bge-reranker-base",
+          "revision": "2cfc18c9415c912f9d8155881c133215df768a70",
+          "path": "data/local/models/bge-reranker-base",
+          "files": [
+            {
+              "name": "README.md",
+              "bytes": 34111,
+              "sha256": "b4223c8c1e95538f8c79168afc501f8b2da06c63221f013b79b28af78b59366d"
+            },
+            {
+              "name": "config.json",
+              "bytes": 799,
+              "sha256": "289adf7ada1eb6b4afa7589a48a032d45a076cf2e46dcdb3b4cabc33be14f708"
+            },
+            {
+              "name": "model.safetensors",
+              "bytes": 1112206140,
+              "sha256": "ced967c45fd1902eb92716c9ceeca7c95a936770ea9db611f5a841b926e33fbd"
+            },
+            {
+              "name": "sentencepiece.bpe.model",
+              "bytes": 5069051,
+              "sha256": "cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865"
+            },
+            {
+              "name": "special_tokens_map.json",
+              "bytes": 279,
+              "sha256": "d5469a60db23249c7f8945013d78df30b44b6bf686c6bb4740f4223f77b1b535"
+            },
+            {
+              "name": "tokenizer.json",
+              "bytes": 17098107,
+              "sha256": "9eb652ac4e40cc093272bbbe0f55d521cf67570060227109b5cdc20945a4489e"
+            },
+            {
+              "name": "tokenizer_config.json",
+              "bytes": 443,
+              "sha256": "a1d6bc8734a6f635dc158508bef000f8e2e5a759c7d92f984b2c86e5ff53425b"
+            }
+          ]
+        }
+      ]
+    },
+    "code_sha256": {
+      "app/__init__.py": "9570dd078424854042b8eaef08df2bb70970a41040a6bcf93018a435369e91d8",
+      "app/agents/__init__.py": "db6582301f970f1e73ed2223779ab670bc9794636e2084582343654b9b264de7",
+      "app/agents/graph.py": "2f41918e236ab84b5ac3aae81a7994741a585e81f6fb9ad827498e27fe7f0a89",
+      "app/agents/nodes/__init__.py": "81cd4075ea4f2d0faaafef102d4eddec7ac0595acf848a4a17ef2ba7831789b9",
+      "app/agents/nodes/executor.py": "df1f9c703adb51c554c9210b7f437a59deae750bf09aef405bfae65287ea2bf7",
+      "app/agents/nodes/faithfulness.py": "e61f46e959075fc36dcc306fe54a70b310acd4b5c3974095f13248f38ae0febc",
+      "app/agents/nodes/generate.py": "015f7994e913fa56008fcde7dfc3a9230a2a0e6f1ae4d26ac7f4185c45912f14",
+      "app/agents/nodes/guardrail.py": "6b38f22ed7c67a3f7a95a2be1d95bff37de57149fc93b013827e71bde8b4a5c6",
+      "app/agents/nodes/intent.py": "938ae92344dd7db7fb9984c3fe7944e441d2b3fe581d6ad4c4c446dc7768eae0",
+      "app/agents/nodes/intent_overlay.py": "5e977e97b45e3245866336d2127c71c8fc44c96f325adc7cc5dfefc5d29645f2",
+      "app/agents/nodes/memory.py": "6a0a2e82e2a80283a7bc62ab43192520745ea72b7dfbcc0550e9ab6a0cf06a2e",
+      "app/agents/nodes/planner.py": "b80509d2eb7c2f09b84887ed9b54b9f3a33acea45473fe0e9287a1e504ac4f3c",
+      "app/agents/nodes/retrieval.py": "e92dee66d5d2374f98ce7046ea22d7de7003e9eb804998ccff89f70ef635b017",
+      "app/agents/nodes/router.py": "5b7484005d014f33d20fdc0793edb0ae54f2ba5e86ddb68a7ecf07889c494d65",
+      "app/agents/state.py": "85dd2ecd479f451dfbe39cc629756bec427fc82acd69ee8a20eb44dec39edb4b",
+      "app/api/__init__.py": "f59293e84f38aa7188dbfd84a14081774c50887c80888b4639edab479a950e43",
+      "app/api/dependencies.py": "0b58685d6fc4f4094f041f3bda755e381d5b5d19d332f9c60cb9e6295dd7092e",
+      "app/api/routes/__init__.py": "c6de03311fc8c1b93c98f52aad0782cc0f15b2782a25b5fbe5f57a35e5debf92",
+      "app/api/routes/admin.py": "c05d0c9a7175ef7e7e64eba282f5967d8b621317f889f9f4939d39a3c430f314",
+      "app/api/routes/chat.py": "ac13e7f1d8fb16480bb18fcfddb91222ee2a4fffecd3d24058d6909090bcf397",
+      "app/api/routes/health.py": "2428f2c771466f61b7c79c39fef039282521d2177dfbbe4dfafe2864aa1d9775",
+      "app/asgi.py": "cdbc3fb8910d1f8f1984019ee8c7623bdb424db0859ef6b349e5541841a1cb73",
+      "app/cli/__init__.py": "00a0a78cf5875717188ab7f5f4d26f784a63653d749666c7d2d065d22c74520d",
+      "app/cli/__main__.py": "b979fbaa29c8058d8649f47b80baa88f9bdc1903572aeb47f88080ca003eaf32",
+      "app/cli/client.py": "769f8a2c553a84f6a41c72c2a4d4a7c4f30758cf480382afd48def0e97e3a724",
+      "app/cli/commands.py": "47ac0376d446d712a911156c7701ffb9d8ff051e2a4dbb7c89fb9c295f2be45f",
+      "app/cli/render.py": "99074271cd4bf7c00397925bad9f6609a91ca780ea18907e3df89ad9acc1ece6",
+      "app/config/__init__.py": "f5171bd43c2329de013241071b80ff7b58d8b038a907942fb886da4f4e7c951b",
+      "app/config/settings.py": "35692faf9869657747336053f64932bd2bc2d08d4bc0a31bd7e47e06f842be08",
+      "app/core/__init__.py": "8edda9306628ef54930888a3147efce1fe64da9927e3f728cfe36752c41e3874",
+      "app/core/constants.py": "e1627cd10de8f676599edbf1a00e8cb92baeca9f218aff66a362906a518bfbe2",
+      "app/core/enums.py": "33b95908687250d55c15e278545d50559f23add8d9bc3bb163e22d7dad193a58",
+      "app/core/error_codes.py": "f7d02e9112d67f44ccb873f30a7faff52b97038c09f4b2a1aeb3d877f5ffbe64",
+      "app/core/exceptions.py": "dae2564a369fa5cb0c6055225a7a7c99e1b9ac423f389bc5cd68cd77ac2526af",
+      "app/core/ids.py": "e66bf46d21c53829cdd1a8d415b9415d29784a4b54609e8013f90ca8dc2e3eba",
+      "app/core/request_scope.py": "03f9e3ea4b79ae521ecd993a40d9dc34417cdb3a5042489df3922ee46a31af95",
+      "app/core/retry.py": "708aeb63a3b0defbb0265f2dcc5d72a30ddb58a405f2e789dc4633731ae01b34",
+      "app/core/security.py": "b90065119edf99b6ea3e0a871c0a1ccae7008cc54a2e54639b6b322d1f9a44c7",
+      "app/core/time.py": "d9dc5a2f9359694cbc2865492d64f762a9f0033bb1cab7ad1e377d6f161bccea",
+      "app/guardrails/__init__.py": "b4a28b96aabdb64d138eff792a7d0b65564c6646e6127571911819ae3465df84",
+      "app/guardrails/boundary.py": "c2dca8a547aa2b3f9039e2761631c34ba03b3d99ac00b4f79365af4bc5c8f2a1",
+      "app/guardrails/hallucination.py": "01563d7977e6956840961d157fde6a06c0e0b8c77c3dbad59b16c95e10a62973",
+      "app/guardrails/injection.py": "ffe51a7cbd44787f5947d383f9a0ce2b93d89b34fa7cbf6413cc4e583451b669",
+      "app/infra/__init__.py": "8539f9d8403c35b942f683d0967f35bca56df74b3636438dce1cfaad896436d3",
+      "app/infra/rate_limit.py": "e7fcc08eb402de4122f01841a5dcb650af2f1c33d6448d99a704a85b46a7dd9b",
+      "app/infra/redis_client.py": "ec1443af9b6401dcb2c9de740e3a7ac81f4d530261a3853813458070fddf8b20",
+      "app/main.py": "75728c7d7351f001e88167d8cb3876e089bf619fe17ddca5701cf053bf374750",
+      "app/memory/__init__.py": "b872d603c3fe65957fb56e71761eff85199fcc1a229c7b1b81b230d1e17e4f06",
+      "app/memory/budget.py": "02527c352a1f65e19b424970e5062e85d820f250d6898c9137ba46eddcb71145",
+      "app/memory/compression.py": "d4cf1b5346cf45b1f624bee0170bfb05d45bbeb8952d01975089e795741c5bc2",
+      "app/memory/context.py": "3cf6a2bf82de938f9429641f8b2cde7da2a886546b101b961c6cbe6b6aefe8fa",
+      "app/memory/summarizer.py": "83329fbfdd9ca5507823f080bf13f94ac6632ca9d83700b98f17ab3656236c52",
+      "app/observability/__init__.py": "d3b0153f1a2fcbbd12c5a3c17b50e46ff4ae9dffbca95b535075d0f74e7f6aa1",
+      "app/observability/context.py": "de8a011627014052828e83a3302c68a50111d6deca649176731667e9b05eb3b1",
+      "app/observability/logging.py": "fbdd35a4b60bf06cf50d0d9ff995fede8b619edba3f7b993ffbc94b2503d41f7",
+      "app/observability/metrics.py": "0bc9e9da50e43f21f232b59b5518dc654b86f1be105287c77886ff13ee070de5",
+      "app/prompts/__init__.py": "62280417f6e78aab6b2fe1030e6bce77e9b045c6ec1ff97be4420b6c41a32116",
+      "app/prompts/answer.py": "56f118f9b4ce5b6a8073523f3df7ba7343da4b0c3d2b5f4205d46d9693f3d591",
+      "app/prompts/complexity.py": "aed159bc37428735d7335694d63d63b5a868872cb6c40da7c0a8627e09eb2b04",
+      "app/prompts/faithfulness.py": "272a47c30e2ac3b36a3e41ffcbcbea8701cfa1722ab2800f574ac39ae83759c4",
+      "app/prompts/intent.py": "9b3aa484ee4b3e4e2696b6001ba1b9202de63d22d29c4e7e9496717750fe773b",
+      "app/prompts/planner.py": "f40c1898757df1320c148f751df2da24493b5b81dc0dee62b6b52cbe00047a1a",
+      "app/prompts/query_rewrite.py": "f0a06e9d3a060f2df9786ad37cc47add0958d79424c4023f22be2fec2d8c78e1",
+      "app/prompts/self_rag.py": "1f375e5bc22974d1048e9eb77e9b9ca7a45ade79552a24d73c5a8de4a84dde97",
+      "app/prompts/summary.py": "efb4b542bca32b78ceb672920f7b041e7f917be4d7571d68b959bc5393cb996d",
+      "app/providers/__init__.py": "72be6ce741d0c62829466e93b8e05710f1af6b1acb99f63b70d08ee886a8485c",
+      "app/providers/base.py": "b7525fda61d2fc93a5389f83f8d8ab07bfad5fa3b7af18e1337366e5a31f0fbc",
+      "app/providers/deepseek.py": "af4b2b1276f7e2b9027739a7f0a6ae449e1188929b199cdc546b1cd32e2abb46",
+      "app/providers/device.py": "14b981c01fc52f883c0f7cbfa80484907f2697b1653dfa22c002ac5e10d6d801",
+      "app/providers/embeddings.py": "bb8bbd183a5d1c06ab12ca99d1f8e90ea9e95dda68089bcf02a96811d2654b7a",
+      "app/providers/fake.py": "b4e6e4b4a16eabf3ae3e6dbb9ddd938409fb34bb4fa20b4e9cecee24486ab6a8",
+      "app/providers/json_parser.py": "5ad619950d24353e8105c4e472bb597cb4da75ebc441981efce8510bb8e2e444",
+      "app/providers/reranker.py": "93cd09fe359a32cd9fe1f91b02016460c8cf8cc14e19721db4df0f1ce8d36420",
+      "app/repositories/__init__.py": "52eb661decd91653c133a9226604560e89365f1ac1b1d388aea6cc004f07bbd0",
+      "app/repositories/action_repository.py": "7058560d4e892b6b6a60bcf0514b767c080b37d49ae9b53b5d367171b82ba6d6",
+      "app/repositories/db.py": "45caa5545ecd38d62f149e48ebf855a60ad4cbec82292a435486b0fef9f91541",
+      "app/repositories/idempotency.py": "1acfa6d14126631e7cb316cb00034a7750bf27669fcab38de802d7c46f1aae8a",
+      "app/repositories/lab_repository.py": "94c913f2dd66e33fb700b85c6b004d9282aab61cb24d9c0c98400a2ebcb525ff",
+      "app/repositories/models.py": "5d86d5fa7c052c2d0eaed79d980571c761ff43655f15aadb4d4a2e84df408d45",
+      "app/repositories/session_repository.py": "0ababed5c3c09806f0cba1a4acf728b8717630943c6300793828783a49b6540f",
+      "app/retrieval/__init__.py": "9a0b7daff8c8cc6a3258fdae442e6c0426cd2ecca3c064e23b12c7edb919c4a4",
+      "app/retrieval/adaptive.py": "2c74935893a2842cac6d11fd7db88d40608f70febc9f619d3d664e444cd49891",
+      "app/retrieval/bm25.py": "cb4e13f814a71093d38a6bcd1d0eaa8b29662ef0f841c85e3a86087fe2b6a57c",
+      "app/retrieval/cache.py": "f88652d644e9a09366d94e7c4668562be07ec857420a59f0e04f11447bf9ef44",
+      "app/retrieval/chunking.py": "56c5cd458a64aa8fe8b17aef45f5c5d9d7896c63099277becf1f8ee8d5fa8542",
+      "app/retrieval/cleaning.py": "47f1ff6e4f052646df3771d605889e123c50917beb1e7edbc540dc6b3aade6ad",
+      "app/retrieval/fusion.py": "ec7ab7c32a7cd8faf130a93269476357fdf3f42637adb80ff9b61f74aec9197f",
+      "app/retrieval/hybrid.py": "a249ff6d178d7f3333922810bb0c16bcb5be3706d893bbc71eb2da1e38586956",
+      "app/retrieval/ingest.py": "c0598b08bcbb24d4f5da9325f4e1389b0fb6d28999413841f51ab3f5fae6dde8",
+      "app/retrieval/query_rewrite.py": "d7c16a267e6a965bcdd7d7d740caa8049aea8c2776b5f1121dd82ad295f3b5c8",
+      "app/retrieval/reranker.py": "0a800f4b675ffdc01d7da8fa2e2488d4c79b4e68565c9ccfe3d21683b25e8f2d",
+      "app/retrieval/self_rag.py": "5ad5fc9c0547d9e186347f9026dcb70dc6bff0a1f693718d9c3192a2af109220",
+      "app/retrieval/tokenizer.py": "a69e4415f4a0ad759e1cbd98ee071af1b4e4284bd5313a234b670003724002e6",
+      "app/retrieval/unstructured_parser.py": "c612e1498b2a141c127f42fedfae684e2874bf85dacfcb4a4f8a260110d4bb81",
+      "app/retrieval/vector.py": "33afddd3c3229086709b393fb410dd300418b1225cc6d3319089c007556d207a",
+      "app/schemas/__init__.py": "001339acfaaa0a580a259e6e77d886bc735e10ffdaa7fae0eda622a10c0d0471",
+      "app/schemas/agent.py": "0b5d2ce4c4ec48bbb2cac2d582440da53f8d23bf5784ab0595e61f32fbe5edf6",
+      "app/schemas/chat.py": "5d330768afb41d122dddae2caaaca15e28e8c4a36be142c9bb479cc044966777",
+      "app/schemas/common.py": "3fcb1f0a773e6f7452c121a46d62b90b3db662df89d1a0d4ee7cd7bf2f1d0c97",
+      "app/schemas/health.py": "0c34f6e5ec14f7e9698387956662be6533e33cc446f954670f9bb821a6e43003",
+      "app/schemas/retrieval.py": "65416466320afc049aa08a81957259c0d2fd94b533289b8459c998d65e941a61",
+      "app/services/__init__.py": "d90e860af7551450ad5765bfc31eb4fbf07a8bbe4df26b5a9869c277b7c5f2ca",
+      "app/services/chat_service.py": "a4f20ec2c0df1626bd533e2a752bc0a9bfcfec7adafb45ed29352df2647a2892",
+      "app/services/container.py": "c604e4943c946b511bd1381eb31a50dae0ee72ca94328cf3b92f78bf5a4492a3",
+      "app/services/seed.py": "de24f7549ed6eac7d53dbd729742a34317c93e7d300854bd1c31563b46639d02",
+      "app/skills/__init__.py": "97623a844b9980509e7b222580cd59d33efa0aec767f65cf2da7b951ca8798da",
+      "app/skills/loader.py": "7d8bc906d29894878164434d6a7a9ac45ec9af5c0840c2a26e68504521703043",
+      "app/tools/__init__.py": "a3503a190ea850fa1498f3ef6fb46bcb28c54dfc07ed9092dc9654a003e119bd",
+      "app/tools/base.py": "81a43530c77086a01167b80e4462ad2713ec66669c56efa1bd5ebabcd975d640",
+      "app/tools/deps.py": "936c83cf36f09438d9eb3ed4f42212293633344d0b5fedd803b0d1c607dac855",
+      "app/tools/factory.py": "fd51d9b7420268a99601de02ba73ae1d28c6f7147cdbd3460f769036aa3c7336",
+      "app/tools/knowledge_tools.py": "e5bab700061b6ec53ecf151cc1fdcb25f133c23b7b4b50028d1e78efe62d38bd",
+      "app/tools/lab_tools.py": "82c69965f740ab4dd884994e6fcfdf3d45350e688203efb5ade74be7af2dbdcd",
+      "app/tools/permissions.py": "b53c1ead77aef642283b7e5509e30277dd968a3d0be2fc36fad3270947fe66ef",
+      "app/tools/registry.py": "e6dffb0c51472acfff537d1f29d47325809d9da88e95e84a25d0426d3572a536",
+      "eval/metrics.py": "ea1efaa55410d16fca7494aa0da5d0d3797e5628fa994277f5338fcff04fbdd7",
+      "eval/runner.py": "973a6c734911fc3fa325482ca78dfde516d3aa4c4915aca9300710ab414b1437",
+      "eval/workflows.py": "4086ab7938b8850a1fa1d9bce52575ef9c24a9538d19af581065dfb7ec12a664"
+    },
+    "publication_note": "This public release omits unrelated source files from the historical measurement snapshot. The retained metrics and model results are historical measurements from 2026-10-31 and were not rerun against the public source tree. code_sha256 lists retained source paths only; its values identify the measured historical versions."
+  },
+  "model_verification": {
+    "dense_backend": "bge-small-zh-v1.5",
+    "embedding_dim": 512,
+    "reranker_backend": "cross-encoder",
+    "embedding_device": "cpu",
+    "reranker_device": "cpu",
+    "inference_passed": true
+  }
+}

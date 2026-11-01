@@ -1,0 +1,7 @@
+{
+  "name": "equipment_maintenance",
+  "description": "共享仪器故障报告和维修申请",
+  "triggers": ["设备故障", "仪器故障", "设备报修", "帮我报修", "异常振动", "故障工单"],
+  "steps": ["确认设备编号与现象", "检索本项目报修流程和安全边界", "只在用户明确要求时创建待审核故障工单", "提醒管理员审核并安排维修"],
+  "tools": ["search_knowledge", "get_lab_equipment_status", "create_lab_maintenance_ticket"]
+}

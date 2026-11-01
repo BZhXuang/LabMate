@@ -1,0 +1,75 @@
+{"id":"lr01","query":"《高等学校实验室安全规范》的发布目的是什么","relevant_doc_ids":["01-laboratory-safety-governance"],"gold_answer_contains":["安全","高校"]}
+{"id":"lr02","query":"公开高校的实验室规定能代替本校制度吗","relevant_doc_ids":["01-laboratory-safety-governance"],"gold_answer_contains":["本校","参考"]}
+{"id":"lr03","query":"发生泄漏、触电或人员受伤时该怎么办","relevant_doc_ids":["01-laboratory-safety-governance","04-equipment-operation-boundaries"],"gold_answer_contains":["应急","管理员"]}
+{"id":"lr04","query":"本助手能否启动、解锁或复位实验仪器","relevant_doc_ids":["01-laboratory-safety-governance","04-equipment-operation-boundaries"],"gold_answer_contains":["不能","设备"]}
+{"id":"lr05","query":"演示台账设备状态是实时传感器数据吗","relevant_doc_ids":["01-laboratory-safety-governance","05-demo-equipment-catalog"],"gold_answer_contains":["模拟","实时"]}
+{"id":"lr06","query":"大型仪器预约前需要通过什么考核","relevant_doc_ids":["02-shared-instrument-booking"],"gold_answer_contains":["管理员","考核"]}
+{"id":"lr07","query":"所有高校都统一用一个仪器预约平台吗","relevant_doc_ids":["02-shared-instrument-booking"],"gold_answer_contains":["不能","预约"]}
+{"id":"lr08","query":"培训完成后如何取得设备操作许可","relevant_doc_ids":["02-shared-instrument-booking"],"gold_answer_contains":["培训","管理员"]}
+{"id":"lr09","query":"预约时要核对哪些设备使用要求和时段限制","relevant_doc_ids":["02-shared-instrument-booking"],"gold_answer_contains":["使用要求","时段"]}
+{"id":"lr10","query":"系统没有重叠预约是不是说明仪器已经空闲","relevant_doc_ids":["02-shared-instrument-booking","05-demo-equipment-catalog"],"gold_answer_contains":["演示","不表示"]}
+{"id":"lr11","query":"设备出现报警时应该记录哪些故障信息","relevant_doc_ids":["03-instrument-fault-reporting","04-equipment-operation-boundaries"],"gold_answer_contains":["设备编号","现象"]}
+{"id":"lr12","query":"设备维修如何申请审批并验收","relevant_doc_ids":["03-instrument-fault-reporting"],"gold_answer_contains":["审批","验收"]}
+{"id":"lr13","query":"维修是不是由学生自己联系厂家处理","relevant_doc_ids":["03-instrument-fault-reporting"],"gold_answer_contains":["管理方","厂家"]}
+{"id":"lr14","query":"登记报修工单需要填写什么","relevant_doc_ids":["03-instrument-fault-reporting"],"gold_answer_contains":["设备编号","故障"]}
+{"id":"lr15","query":"发生设备故障能自行拆机更换配件吗","relevant_doc_ids":["03-instrument-fault-reporting","04-equipment-operation-boundaries"],"gold_answer_contains":["不要","管理员"]}
+{"id":"lr16","query":"具体型号的离心机转速应该设置多少","relevant_doc_ids":["04-equipment-operation-boundaries"],"gold_answer_contains":["不提供","说明书"]}
+{"id":"lr17","query":"没有原厂手册能否提供设备故障复位步骤","relevant_doc_ids":["04-equipment-operation-boundaries"],"gold_answer_contains":["不得","手册"]}
+{"id":"lr18","query":"设备联锁报警可以直接绕过吗","relevant_doc_ids":["04-equipment-operation-boundaries"],"gold_answer_contains":["不能","联锁"]}
+{"id":"lr19","query":"发现压力设备异常应该怎么处置","relevant_doc_ids":["01-laboratory-safety-governance","04-equipment-operation-boundaries"],"gold_answer_contains":["应急预案","管理员"]}
+{"id":"lr20","query":"实验室助手可以远程改变仪器参数吗","relevant_doc_ids":["01-laboratory-safety-governance","04-equipment-operation-boundaries"],"gold_answer_contains":["不能","参数"]}
+{"id":"lr21","query":"LAB-CF-01 演示台账上的位置和状态是什么","relevant_doc_ids":["05-demo-equipment-catalog"],"gold_answer_contains":["A楼 203","可申请"]}
+{"id":"lr22","query":"LAB-AC-01 是否能预约","relevant_doc_ids":["05-demo-equipment-catalog"],"gold_answer_contains":["维护中","不可"]}
+{"id":"lr23","query":"哪些演示设备需要上机培训","relevant_doc_ids":["05-demo-equipment-catalog"],"gold_answer_contains":["培训","管理员"]}
+{"id":"lr24","query":"未知设备编号会如何处理","relevant_doc_ids":["05-demo-equipment-catalog"],"gold_answer_contains":["未找到","编造"]}
+{"id":"lr25","query":"没培训但系统显示时段空闲，我能预约共聚焦显微镜上机吗","relevant_doc_ids":["02-shared-instrument-booking","05-demo-equipment-catalog","06-labops-multi-hop-cases"],"gold_answer_contains":["培训","不能"]}
+{"id":"lr26","query":"仪器报警后想更换部件再报修，需要遵守什么边界","relevant_doc_ids":["03-instrument-fault-reporting","04-equipment-operation-boundaries","06-labops-multi-hop-cases"],"gold_answer_contains":["管理员","自行"]}
+{"id":"lr27","query":"帮我判断是否有资格上机，同时确认申请是不是获批","relevant_doc_ids":["01-laboratory-safety-governance","02-shared-instrument-booking","05-demo-equipment-catalog","06-labops-multi-hop-cases"],"gold_answer_contains":["授权","待审核"]}
+{"id":"lr28","query":"课题组负责人同意了，可以代替设备管理员授予上机资格吗","relevant_doc_ids":["demo-ops-access-and-roles"],"gold_answer_contains":["不能","管理员"]}
+{"id":"lr29","query":"借用同组同学的账号和培训证书能进入实验平台吗","relevant_doc_ids":["demo-ops-access-and-roles"],"gold_answer_contains":["账号","授权"]}
+{"id":"lr30","query":"只看过安全培训视频，是否就取得每台设备的操作资格","relevant_doc_ids":["demo-ops-training-authorization"],"gold_answer_contains":["专项","管理员"]}
+{"id":"lr31","query":"设备型号变化或长期没使用，需要重新复核培训吗","relevant_doc_ids":["demo-ops-training-authorization"],"gold_answer_contains":["重新","培训"]}
+{"id":"lr32","query":"我只说想明天下午用仪器两个小时，预约表还缺哪些信息","relevant_doc_ids":["demo-ops-reservation-request"],"gold_answer_contains":["设备编号","时区","用途"]}
+{"id":"lr33","query":"本项目里用户确认预约申请后，会直接变成批准状态吗","relevant_doc_ids":["demo-ops-reservation-request"],"gold_answer_contains":["待审核","不代表"]}
+{"id":"lr34","query":"原预约要跨日延期并换使用人，能直接改吗","relevant_doc_ids":["demo-ops-cancellation-no-show"],"gold_answer_contains":["管理员","复核"]}
+{"id":"lr35","query":"因设备维护没有到场，会自动算爽约并扣分吗","relevant_doc_ids":["demo-ops-cancellation-no-show"],"gold_answer_contains":["原因","管理员"]}
+{"id":"lr36","query":"两个预约一个在十点结束一个在十点开始，算时间重叠吗，交接缓冲怎么算","relevant_doc_ids":["demo-ops-booking-conflicts"],"gold_answer_contains":["不视为重叠","管理员"]}
+{"id":"lr37","query":"跨日预约来自不同时区，比较冲突前要做什么","relevant_doc_ids":["demo-ops-booking-conflicts"],"gold_answer_contains":["时区","同一"]}
+{"id":"lr38","query":"维护中的仪器当天完全没预约，是否就允许申请了","relevant_doc_ids":["demo-ops-maintenance-windows"],"gold_answer_contains":["维护","不能"]}
+{"id":"lr39","query":"维修厂商回复了或者屏幕亮起来了，就能宣布恢复开放吗","relevant_doc_ids":["demo-ops-maintenance-windows"],"gold_answer_contains":["管理员","验收"]}
+{"id":"lr40","query":"报修写轴承坏了还是写持续振动，错误码 E01 应该怎么记","relevant_doc_ids":["demo-ops-fault-ticket-fields"],"gold_answer_contains":["事实","原文"]}
+{"id":"lr41","query":"为了提交报修照片，需要重新运行设备复现故障吗","relevant_doc_ids":["demo-ops-fault-ticket-fields"],"gold_answer_contains":["不要","复现"]}
+{"id":"lr42","query":"工单标成 urgent 就保证立刻打电话派维修人员吗","relevant_doc_ids":["demo-ops-fault-priority-and-status"],"gold_answer_contains":["演示","不保证"]}
+{"id":"lr43","query":"报修状态 open 是不是说明设备已经自动停用并通知工程师了","relevant_doc_ids":["demo-ops-fault-priority-and-status"],"gold_answer_contains":["登记","不代表"]}
+{"id":"lr44","query":"维修验收一般需要核对哪些记录和遗留问题","relevant_doc_ids":["demo-ops-repair-acceptance"],"gold_answer_contains":["设备编号","维修","检查结果"]}
+{"id":"lr45","query":"维修人员说处理完了但还有报警，学生能宣布恢复开放吗","relevant_doc_ids":["demo-ops-repair-acceptance"],"gold_answer_contains":["管理员","遗留问题"]}
+{"id":"lr46","query":"点检、保养和校准记录能互相替代吗","relevant_doc_ids":["demo-ops-preventive-maintenance"],"gold_answer_contains":["不能","校准"]}
+{"id":"lr47","query":"不知道设备型号，能按购置年份推算统一校准有效期吗","relevant_doc_ids":["demo-ops-preventive-maintenance"],"gold_answer_contains":["不能","管理员"]}
+{"id":"lr48","query":"两种耗材外形尺寸相同，助手能认定兼容吗","relevant_doc_ids":["demo-ops-consumables-handover"],"gold_answer_contains":["不能","兼容"]}
+{"id":"lr49","query":"拆封后存放记录不明的剩余耗材可以直接退回库存再分发吗","relevant_doc_ids":["demo-ops-consumables-handover"],"gold_answer_contains":["管理员","存放"]}
+{"id":"lr50","query":"使用日志可以把预约结束时间当作实际结束时间吗","relevant_doc_ids":["demo-ops-usage-logs"],"gold_answer_contains":["不能","分别"]}
+{"id":"lr51","query":"仪器运行日志漏记了，可以不留痕迹直接覆盖原记录吗","relevant_doc_ids":["demo-ops-usage-logs"],"gold_answer_contains":["保留","更正原因"]}
+{"id":"lr52","query":"共用仪器电脑上同组师兄的数据，我能一起导出来吗","relevant_doc_ids":["demo-ops-data-export"],"gold_answer_contains":["权限","不代表"]}
+{"id":"lr53","query":"数据导出的截图是否等于完整原始文件，保存期限统一多久","relevant_doc_ids":["demo-ops-data-export"],"gold_answer_contains":["原始","期限"]}
+{"id":"lr54","query":"送样表、外包装编号和实物数量对不上，该怎么登记差异","relevant_doc_ids":["demo-ops-sample-handover"],"gold_answer_contains":["暂停","核对"]}
+{"id":"lr55","query":"委托管理员检测样本等于我拿到上机授权了吗","relevant_doc_ids":["demo-ops-sample-handover"],"gold_answer_contains":["不等于","授权"]}
+{"id":"lr56","query":"不知道共享仪器收费表，能直接告诉我每小时多少钱吗","relevant_doc_ids":["demo-ops-billing-review"],"gold_answer_contains":["收费","不编造"]}
+{"id":"lr57","query":"仪器故障只用了一部分时间，申请费用异议要准备什么","relevant_doc_ids":["demo-ops-billing-review"],"gold_answer_contains":["设备编号","实际使用"]}
+{"id":"lr58","query":"校外人员获准参观，就可以操作平台仪器吗","relevant_doc_ids":["demo-ops-external-visitors"],"gold_answer_contains":["不代表","授权"]}
+{"id":"lr59","query":"外部访客临时增加人数或更换参观区域，还要重新确认吗","relevant_doc_ids":["demo-ops-external-visitors"],"gold_answer_contains":["管理员","确认"]}
+{"id":"lr60","query":"项目自拟演示规则能称为教育部或学校的正式文件吗","relevant_doc_ids":["demo-ops-document-versioning"],"gold_answer_contains":["自拟","不能"]}
+{"id":"lr61","query":"两份校规来自不同学校但发布时间有先后，能让新文件覆盖旧文件吗","relevant_doc_ids":["demo-ops-document-versioning"],"gold_answer_contains":["适用","不能"]}
+{"id":"lr62","query":"实验平台管理员换班时应该移交哪些未完成事项","relevant_doc_ids":["demo-ops-shift-handover"],"gold_answer_contains":["维护","预约","责任人"]}
+{"id":"lr63","query":"交班人说设备好了，交班记录能替代维修验收吗","relevant_doc_ids":["demo-ops-shift-handover"],"gold_answer_contains":["不能","验收"]}
+{"id":"lr64","query":"发生冒烟伤人后，需要留在现场拍照等聊天工单回复吗","relevant_doc_ids":["demo-safety-emergency-report"],"gold_answer_contains":["远离","应急预案"]}
+{"id":"lr65","query":"远离危险后向现场安全员报告，信息不清楚可以猜吗","relevant_doc_ids":["demo-safety-emergency-report"],"gold_answer_contains":["不清楚","地点"]}
+{"id":"lr66","query":"房间漏水和通风报警，是联系后勤还是填仪器故障单","relevant_doc_ids":["demo-safety-electrical-facilities"],"gold_answer_contains":["管理员","后勤"]}
+{"id":"lr67","query":"供电恢复后仪器亮屏，能据此认定电路安全并直接重启吗","relevant_doc_ids":["demo-safety-electrical-facilities"],"gold_answer_contains":["不能","管理员"]}
+{"id":"lr68","query":"化学品商品名很像，混合物能直接套用某个成分的 SDS 吗","relevant_doc_ids":["demo-safety-chemical-information"],"gold_answer_contains":["不能","SDS"]}
+{"id":"lr69","query":"无标签试剂能靠闻气味或试混确认身份吗","relevant_doc_ids":["demo-safety-chemical-information"],"gold_answer_contains":["不","管理员"]}
+{"id":"lr70","query":"生物样本送样信息可以填受试者姓名、病历和基因数据吗","relevant_doc_ids":["demo-safety-biosample-declaration"],"gold_answer_contains":["匿名编号","隐私"]}
+{"id":"lr71","query":"仪器培训通过是否说明样本风险和伦理审批也通过了","relevant_doc_ids":["demo-safety-biosample-declaration"],"gold_answer_contains":["不等于","伦理"]}
+{"id":"lr72","query":"LAB-CF-01 这个编号是厂家型号吗，可以推算离心参数吗","relevant_doc_ids":["demo-safety-device-boundaries"],"gold_answer_contains":["演示","不"]}
+{"id":"lr73","query":"戴着护目镜就能解除共聚焦显微镜的联锁上机吗","relevant_doc_ids":["demo-safety-device-boundaries"],"gold_answer_contains":["联锁","管理员"]}
+{"id":"lr74","query":"我培训通过了但样本接收未审核，能否当成所有预约条件都满足","relevant_doc_ids":["demo-ops-cross-topic-cases","demo-ops-training-authorization","demo-ops-sample-handover"],"gold_answer_contains":["不能","样本"]}
+{"id":"lr75","query":"实验被故障打断后，同时报修和退费要怎么区分办理","relevant_doc_ids":["demo-ops-cross-topic-cases","demo-ops-fault-ticket-fields","demo-ops-billing-review"],"gold_answer_contains":["确认","费用","管理员"]}

@@ -1,0 +1,11 @@
+{
+  "version": "labmate-v2",
+  "intent_cases": 120,
+  "e2e_scenarios": 32,
+  "e2e_turns": 51,
+  "policy": "Retain all 24 intent and 8 E2E originals; add manually specified AI-assisted cases before running. Gold labels and cases are development regressions, not independent holdout. Never delete failing cases. Dates use run-relative UTC windows for workflows. Restart means fresh ChatService and engine on same file DB, not host reboot.",
+  "frozen_sha256": {
+    "eval\\dataset\\labmate\\intent.jsonl": "3c04d400e7db79665e927e223aa4ceeaa8ec594e80e4f4b4a827b5cef17fda64",
+    "eval\\dataset\\labmate\\e2e.jsonl": "d80efe7fa523b5b8ec16c373aca77d6aa8d268d988d903f26ef8f39f47a4105b"
+  }
+}
