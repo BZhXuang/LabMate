@@ -61,7 +61,9 @@ def test_collapses_inline_space_and_extra_blank_lines() -> None:
 
 def test_markdown_keeps_policy_pii_words_and_numbers(tmp_path: Path) -> None:
     path = tmp_path / "lab_policy.md"
-    path.write_text("管理员不得索取完整身份证。联系以 13812345678 为例不得复述。\n", encoding="utf-8")
+    path.write_text(
+        "管理员不得索取完整身份证。联系以 13812345678 为例不得复述。\n", encoding="utf-8"
+    )
     chunks = parse_path(
         path,
         document_id="privacy",

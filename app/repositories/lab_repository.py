@@ -143,9 +143,7 @@ class LabRepository:
         }
 
     async def _audit(self, trace_id: str, action: str, record_id: str) -> None:
-        self._session.add(
-            AuditLogRow(trace_id=trace_id, action=action, payload=record_id)
-        )
+        self._session.add(AuditLogRow(trace_id=trace_id, action=action, payload=record_id))
 
 
 def _as_utc(value: datetime) -> datetime:

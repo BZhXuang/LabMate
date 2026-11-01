@@ -85,15 +85,11 @@ class CheckEquipmentAvailabilityTool(LabRepositoryBackedTool, Tool):
     risk = ToolRisk.READ
     input_model = EquipmentAvailabilityInput
 
-    async def execute(
-        self, parsed: EquipmentAvailabilityInput, context: ToolContext
-    ) -> ToolResult:
+    async def execute(self, parsed: EquipmentAvailabilityInput, context: ToolContext) -> ToolResult:
         return ToolResult(
             name=self.name,
             success=True,
-            output=await self.repository.check_availability(
-                parsed.equipment_id, parsed.date
-            ),
+            output=await self.repository.check_availability(parsed.equipment_id, parsed.date),
         )
 
 
@@ -106,9 +102,7 @@ class RequestEquipmentReservationTool(LabRepositoryBackedTool, Tool):
     risk = ToolRisk.WRITE
     input_model = ReservationRequestInput
 
-    async def execute(
-        self, parsed: ReservationRequestInput, context: ToolContext
-    ) -> ToolResult:
+    async def execute(self, parsed: ReservationRequestInput, context: ToolContext) -> ToolResult:
         result = await self.repository.create_reservation_request(
             equipment_id=parsed.equipment_id,
             user_id=context.user_id,
@@ -129,9 +123,7 @@ class CreateMaintenanceTicketTool(LabRepositoryBackedTool, Tool):
     risk = ToolRisk.WRITE
     input_model = MaintenanceRequestInput
 
-    async def execute(
-        self, parsed: MaintenanceRequestInput, context: ToolContext
-    ) -> ToolResult:
+    async def execute(self, parsed: MaintenanceRequestInput, context: ToolContext) -> ToolResult:
         result = await self.repository.create_maintenance_ticket(
             equipment_id=parsed.equipment_id,
             user_id=context.user_id,

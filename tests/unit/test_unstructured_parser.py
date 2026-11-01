@@ -199,8 +199,8 @@ def test_html_fixture_with_injected_partition() -> None:
 
     def fake_partition(_path: Path) -> list[_FakeElement]:
         return [
-        _FakeElement("Title", "实验室管理规则"),
-        _FakeElement("NarrativeText", "大型仪器使用前须完成对应培训。"),
+            _FakeElement("Title", "实验室管理规则"),
+            _FakeElement("NarrativeText", "大型仪器使用前须完成对应培训。"),
             _FakeElement(
                 "Table",
                 "预约设备 时段冲突 联系管理员",

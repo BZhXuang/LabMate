@@ -73,8 +73,10 @@ def rule_based_complexity(query: str, intent: IntentResult) -> ComplexityResult:
         explicit_request = any(
             cue in text for cue in ("帮我预约", "提交预约", "申请预约", "替我预约")
         )
-        if explicit_request or _LAB_EQUIPMENT_ID.search(text) or any(
-            cue in text for cue in ("查一下空闲", "看下有没有空", "能预约吗")
+        if (
+            explicit_request
+            or _LAB_EQUIPMENT_ID.search(text)
+            or any(cue in text for cue in ("查一下空闲", "看下有没有空", "能预约吗"))
         ):
             return ComplexityResult(
                 complexity=QueryComplexity.TOOL_REQUIRED,
@@ -97,10 +99,7 @@ def rule_based_complexity(query: str, intent: IntentResult) -> ComplexityResult:
             confidence=0.82,
             rationale="lab_safety_evidence_lookup",
         )
-    if (
-        _LAB_EQUIPMENT_ID.search(text)
-        or any(cue in text.lower() for cue in _TOOL_CUES)
-    ):
+    if _LAB_EQUIPMENT_ID.search(text) or any(cue in text.lower() for cue in _TOOL_CUES):
         return ComplexityResult(
             complexity=QueryComplexity.TOOL_REQUIRED,
             strategy=RetrievalStrategy.AGENT,

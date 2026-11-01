@@ -14,7 +14,9 @@ def test_greeting_prefix_does_not_hide_lab_maintenance_intent() -> None:
 
 @pytest.mark.asyncio
 async def test_offline_classifier_uses_rules_not_fake_json() -> None:
-    intent = await IntentClassifier(OfflineLLMProvider()).classify("这个助手可以查询哪些实验室资料？")
+    intent = await IntentClassifier(OfflineLLMProvider()).classify(
+        "这个助手可以查询哪些实验室资料？"
+    )
     assert intent.label == IntentLabel.FAQ_POLICY
 
 
